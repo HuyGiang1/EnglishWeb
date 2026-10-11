@@ -1,0 +1,51 @@
+﻿# EnglishFlow — .gitattributes
+# Purpose: Enforce LF normalization across text files while preserving Windows script compatibility.
+
+# Default rule: Auto-detect text files and normalize to LF
+* text=auto eol=lf
+
+# Explicit text files normalized to LF
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.java text eol=lf
+*.sql text eol=lf
+*.properties text eol=lf
+*.sh text eol=lf
+.editorconfig text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Maven Wrapper scripts
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
+.mvn/wrapper/maven-wrapper.jar binary
+
+# Windows-specific scripts require CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary file formats
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.pdf binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.m4a binary
+*.jar binary
+*.war binary

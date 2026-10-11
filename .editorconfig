@@ -1,0 +1,37 @@
+﻿# EnglishFlow — .editorconfig
+# http://editorconfig.org
+
+root = true
+
+# Top-level default settings
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Java source code: 4 spaces standard
+[*.java]
+indent_size = 4
+
+# Windows scripts: CRLF line endings
+[*.{bat,cmd,ps1}]
+end_of_line = crlf
+
+# Maven Wrapper Unix script
+[mvnw]
+end_of_line = lf
+
+# Maven Wrapper Windows batch script
+[mvnw.cmd]
+end_of_line = crlf
+
+# Markdown: preserve trailing whitespace for hard breaks
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefiles require tabs
+[Makefile]
+indent_style = tab

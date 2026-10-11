@@ -1,0 +1,142 @@
+﻿# EnglishFlow — Root .gitignore
+# Purpose: Prevent build artifacts, dependencies, secrets, and temp files from entering version control.
+
+# ==============================================================================
+# 1. Environment & Secrets
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# ==============================================================================
+# 2. Node.js & Next.js Frontend
+# ==============================================================================
+node_modules/
+.pnpm-store/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js Build Artifacts
+.next/
+out/
+
+# General Web Build Outputs
+dist/
+storybook-static/
+
+# ==============================================================================
+# 3. Java & Spring Boot Backend
+# ==============================================================================
+# Maven Build Outputs
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# Allow Maven Wrapper jar & properties to ensure consistent execution
+!.mvn/wrapper/maven-wrapper.jar
+
+# Gradle Build Outputs
+.gradle/
+build/
+!scripts/build/
+
+# Compiled Java Classes
+*.class
+
+# Crash logs
+hs_err_pid*
+replay_pid*
+
+# ==============================================================================
+# 4. IDEs, Editors & Tooling
+# ==============================================================================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# OS Temporary Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ==============================================================================
+# 5. Testing, Coverage & Quality Reports
+# ==============================================================================
+coverage/
+.nyc_output/
+test-results/
+*.lcov
+reports/
+!docs/reports/
+!docs/reports/.gitkeep
+testcontainers-*.log
+
+# ==============================================================================
+# 6. Audio Files, Media Storage & Temporary Recordings
+# ==============================================================================
+# Runtime media storage, user uploads, browser recordings, and temp files
+storage/
+uploads/
+recordings/
+temp/
+tmp/
+*.tmp
+*.part
+**/user_recordings/
+**/audio/uploads/
+**/audio/temp/
+**/audio/cache/
+
+# By default, ignore untracked audio files dropped outside designated resource paths
+*.mp3
+*.wav
+*.ogg
+*.m4a
+*.aac
+*.flac
+
+# EXPLICITLY ALLOW: Curated reference educational audio and test fixtures
+!**/curated_audio/**
+!**/audio/reference/**
+!**/src/main/resources/audio/**
+!**/src/test/resources/audio/**
+!docs/assets/**
