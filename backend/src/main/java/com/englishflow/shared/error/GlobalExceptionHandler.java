@@ -93,6 +93,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.vocabulary.exception.VocabularyNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleVocabularyNotFound(com.englishflow.vocabulary.exception.VocabularyNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.vocabulary.exception.DuplicateVocabularyException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateVocabulary(com.englishflow.vocabulary.exception.DuplicateVocabularyException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "DUPLICATE_VOCABULARY",
+            ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler({InvalidCredentialsException.class, BadCredentialsException.class})
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(Exception ex) {
         ApiErrorResponse response = ApiErrorResponse.of(

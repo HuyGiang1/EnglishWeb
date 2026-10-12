@@ -101,7 +101,8 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M1-T02: Spring Boot Backend Scaffolding
   * M1-T03: Next.js Frontend Scaffolding & Design System Foundation
   * M1-T04: Full-Stack Session Authentication Vertical Slice (Registration, Login, Session Management, Protected Dashboard, Logout)
-* **Next Task**: M1-T05 — Vocabulary Domain & Management Vertical Slice
+  * M1-T05: Vocabulary Management Full-Stack Vertical Slice (Flyway V2, Multi-Tenant CRUD, Quick Add, Search, Soft Deletion, Responsive Library)
+* **Next Task**: M1-T06 — Spaced Repetition SRS (SM-2) Flashcard Vertical Slice
 
 ---
 

@@ -1,0 +1,314 @@
+"use client";
+
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { vocabularyApi, VocabularyItem } from "@/lib/api/vocabulary";
+import {
+  vocabularySchema,
+  type VocabularyFormData,
+} from "@/lib/vocabulary/vocabulary-schema";
+
+interface QuickAddDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (item: VocabularyItem) => void;
+}
+
+export function QuickAddDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: QuickAddDialogProps) {
+  const [duplicateWarning, setDuplicateWarning] = React.useState<string | null>(null);
+  const [serverError, setServerError] = React.useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<VocabularyFormData>({
+    resolver: zodResolver(vocabularySchema),
+    defaultValues: {
+      term: "",
+      partOfSpeech: "noun",
+      phoneticIpa: "",
+      vietnameseMeaning: "",
+      englishDefinition: "",
+      exampleSentence: "",
+      exampleTranslation: "",
+      notes: "",
+      difficultyLevel: "",
+    },
+  });
+
+  const watchedTerm = watch("term");
+  const watchedPos = watch("partOfSpeech");
+
+  // Advisory duplicate check on debounced term changes
+  React.useEffect(() => {
+    if (!watchedTerm || watchedTerm.trim().length < 2) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await vocabularyApi.checkDuplicates(
+          watchedTerm.trim(),
+          watchedPos || undefined
+        );
+        if (res.exists && res.existingEntries.length > 0) {
+          const first = res.existingEntries[0];
+          setDuplicateWarning(
+            `"${first.term}" (${first.partOfSpeech}) is already in your library.`
+          );
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch {
+        // Silently ignore advisory check failures
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [watchedTerm, watchedPos]);
+
+  // Reset form when dialog opens/closes
+  React.useEffect(() => {
+    if (open) {
+      setServerError(null);
+      setDuplicateWarning(null);
+    } else {
+      reset();
+    }
+  }, [open, reset]);
+
+  // Handle Mod+Enter shortcut to submit form
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit(onSubmit)();
+    }
+  };
+
+  const onSubmit = async (data: VocabularyFormData) => {
+    setServerError(null);
+    setIsSubmitting(true);
+
+    try {
+      const created = await vocabularyApi.create({
+        term: data.term.trim(),
+        partOfSpeech: data.partOfSpeech,
+        phoneticIpa: data.phoneticIpa?.trim() || null,
+        vietnameseMeaning: data.vietnameseMeaning.trim(),
+        englishDefinition: data.englishDefinition?.trim() || null,
+        exampleSentence: data.exampleSentence?.trim() || null,
+        exampleTranslation: data.exampleTranslation?.trim() || null,
+        notes: data.notes?.trim() || null,
+        difficultyLevel: data.difficultyLevel || null,
+      });
+
+      reset();
+      onOpenChange(false);
+      if (onSuccess) {
+        onSuccess(created);
+      }
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : "Failed to create vocabulary";
+      setServerError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Quick Add Vocabulary</DialogTitle>
+          <DialogDescription>
+            Add a new word or phrase to your library. Press{" "}
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-mono font-medium text-foreground">
+              Mod+Enter
+            </kbd>{" "}
+            to save.
+          </DialogDescription>
+        </DialogHeader>
+
+        {serverError && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-100 p-3 text-sm text-neutral-900"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-neutral-700" />
+            <span>{serverError}</span>
+          </div>
+        )}
+
+        {duplicateWarning && (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-50 p-2.5 text-xs text-neutral-800"
+          >
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-neutral-600" />
+            <span>Advisory: {duplicateWarning}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-add-term">
+              Word / Phrase <span className="text-neutral-500">*</span>
+            </Label>
+            <Input
+              id="quick-add-term"
+              autoFocus
+              placeholder="e.g. resilience"
+              {...register("term")}
+              disabled={isSubmitting}
+            />
+            {errors.term && (
+              <p className="text-xs text-neutral-600 font-medium">{errors.term.message}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-pos">
+                Part of Speech <span className="text-neutral-500">*</span>
+              </Label>
+              <select
+                id="quick-add-pos"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("partOfSpeech")}
+                disabled={isSubmitting}
+              >
+                <option value="noun">Noun</option>
+                <option value="verb">Verb</option>
+                <option value="adjective">Adjective</option>
+                <option value="adverb">Adverb</option>
+                <option value="idiom">Idiom</option>
+                <option value="phrase">Phrase</option>
+                <option value="preposition">Preposition</option>
+                <option value="conjunction">Conjunction</option>
+                <option value="other">Other</option>
+              </select>
+              {errors.partOfSpeech && (
+                <p className="text-xs text-neutral-600 font-medium">{errors.partOfSpeech.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-ipa">Phonetic (IPA)</Label>
+              <Input
+                id="quick-add-ipa"
+                placeholder="/rɪˈzɪl.jəns/"
+                {...register("phoneticIpa")}
+                disabled={isSubmitting}
+              />
+              {errors.phoneticIpa && (
+                <p className="text-xs text-neutral-600 font-medium">{errors.phoneticIpa.message}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-add-meaning">
+              Vietnamese Meaning <span className="text-neutral-500">*</span>
+            </Label>
+            <Input
+              id="quick-add-meaning"
+              placeholder="khả năng phục hồi, sự kiên cường"
+              {...register("vietnameseMeaning")}
+              disabled={isSubmitting}
+            />
+            {errors.vietnameseMeaning && (
+              <p className="text-xs text-neutral-600 font-medium">{errors.vietnameseMeaning.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-add-definition">English Definition</Label>
+            <Textarea
+              id="quick-add-definition"
+              rows={2}
+              placeholder="The capacity to recover quickly from difficulties."
+              {...register("englishDefinition")}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-example">Example Sentence</Label>
+              <Textarea
+                id="quick-add-example"
+                rows={2}
+                placeholder="Her resilience in the face of adversity was remarkable."
+                {...register("exampleSentence")}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-difficulty">CEFR Level</Label>
+              <select
+                id="quick-add-difficulty"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("difficultyLevel")}
+                disabled={isSubmitting}
+              >
+                <option value="">None / Not set</option>
+                <option value="A1">A1 — Beginner</option>
+                <option value="A2">A2 — Elementary</option>
+                <option value="B1">B1 — Intermediate</option>
+                <option value="B2">B2 — Upper Intermediate</option>
+                <option value="C1">C1 — Advanced</option>
+                <option value="C2">C2 — Proficiency</option>
+              </select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting} className="min-w-28">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Word"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
