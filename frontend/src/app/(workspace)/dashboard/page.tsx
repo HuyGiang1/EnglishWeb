@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Sparkles,
@@ -7,18 +9,24 @@ import {
   ArrowRight,
   Info,
   Calendar,
+  User as UserIcon,
+  Clock,
+  Target,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+
   return (
     <div className="space-y-8">
-      {/* Page Header */}
+      {/* Page Header with Real Authenticated Identity */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            Overview
+            {user ? `Welcome back, ${user.displayName}` : "Workspace Overview"}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Daily command center for spaced repetition and language acquisition.
@@ -35,14 +43,42 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Authoritative Account Session Card */}
+      {user && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-border bg-card p-4 text-xs">
+          <div className="flex items-center gap-2.5">
+            <UserIcon className="size-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Account</p>
+              <p className="font-semibold text-foreground truncate">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Clock className="size-4 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Timezone</p>
+              <p className="font-semibold text-foreground">{user.timezone}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Target className="size-4 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Daily Target</p>
+              <p className="font-semibold text-foreground">{user.dailyGoalItems} items / day</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Milestone Scaffolding Status Alert */}
       <div className="rounded-md border border-border bg-muted/40 p-4">
         <div className="flex items-start gap-3">
           <Info className="size-4 text-foreground shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">Milestone M1 Foundation: </span>
-            Frontend Next.js application, monochrome design system tokens, and same-origin API proxy are active.
-            Real-time SRS queues and learning event telemetry will populate as backend domain services are connected in subsequent tasks.
+            <span className="font-semibold text-foreground">Authentication Active: </span>
+            Spring Security session is authenticated against PostgreSQL.
+            Vocabulary CRUD and spaced repetition review algorithms will connect in Milestone M1-T05.
+            Study analytics and heatmap below remain zeroed until study event telemetry is submitted.
           </div>
         </div>
       </div>

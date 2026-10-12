@@ -11,8 +11,10 @@ import {
   HelpCircle,
   Settings,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export interface NavItem {
   title: string;
@@ -89,6 +91,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onNavClick }: SidebarContentProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   const renderNavSection = (title: string, items: NavItem[]) => (
     <div className="space-y-1">
@@ -169,19 +172,43 @@ export function SidebarContent({ onNavClick }: SidebarContentProps) {
         </div>
       </div>
 
-      {/* Footer System Status */}
-      <div className="rounded-md border border-border bg-card p-3 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Backend Target</span>
-          <span className="font-mono text-[11px] text-foreground font-medium">
-            :8080 (Proxy)
-          </span>
-        </div>
-        <div className="mt-1 flex items-center justify-between">
-          <span className="text-muted-foreground">Auth Model</span>
-          <span className="font-mono text-[11px] text-foreground font-medium">
-            Session Cookie
-          </span>
+      {/* User Session Profile & Functional Logout */}
+      <div className="space-y-2 pt-4 border-t border-border">
+        {user && (
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/40">
+            <div className="flex flex-col min-w-0 pr-2">
+              <span className="text-xs font-semibold text-foreground truncate">
+                {user.displayName}
+              </span>
+              <span className="text-[10px] text-muted-foreground truncate">
+                {user.email}
+              </span>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="Sign Out"
+              aria-label="Sign Out"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <LogOut className="size-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Footer System Status */}
+        <div className="rounded-md border border-border bg-card p-2.5 text-[11px]">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Backend</span>
+            <span className="font-mono text-[10px] text-foreground font-medium">
+              :8080 (Proxy)
+            </span>
+          </div>
+          <div className="mt-1 flex items-center justify-between">
+            <span className="text-muted-foreground">Session</span>
+            <span className="font-mono text-[10px] text-foreground font-medium">
+              {user ? "Authenticated" : "Anonymous"}
+            </span>
+          </div>
         </div>
       </div>
     </div>

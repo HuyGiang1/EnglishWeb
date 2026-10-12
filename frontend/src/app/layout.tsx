@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/lib/auth/auth-context";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,9 +28,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-foreground selection:text-background">
-        <TooltipProvider delay={200}>
-          {children}
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider delay={200}>
+            {children}
+          </TooltipProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Command } from "lucide-react";
+import { Menu, Command, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   Sheet,
   SheetContent,
@@ -28,6 +29,7 @@ const routeTitles: Record<string, string> = {
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const currentTitle = routeTitles[pathname] || "EnglishFlow";
 
@@ -70,13 +72,31 @@ export function Header() {
         </div>
       </div>
 
-      {/* Right: Monochrome Status Badges & Focus Mode Link */}
+      {/* Right: Monochrome Status Badges, User Greeting & Logout */}
       <div className="flex items-center gap-2.5">
         <div className="hidden sm:flex items-center gap-1.5 rounded border border-border bg-muted/60 px-2 py-1 text-[11px] font-mono text-muted-foreground">
           <Command className="size-3" />
           <span>K</span>
           <span className="text-[10px] text-muted-foreground/70">Palette</span>
         </div>
+
+        {user && (
+          <div className="hidden md:flex items-center gap-2 border-r border-border pr-2.5">
+            <span className="text-xs font-medium text-foreground">
+              {user.displayName}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => logout()}
+              className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
+              aria-label="Logout"
+            >
+              <LogOut className="size-3" />
+              <span>Logout</span>
+            </Button>
+          </div>
+        )}
 
         <Link href="/review">
           <Button

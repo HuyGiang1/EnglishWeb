@@ -19,14 +19,14 @@ export default function HomePage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm" className="text-xs">
-              Open Workspace
+          <Link href="/login">
+            <Button variant="ghost" size="sm" className="text-xs">
+              Sign In
             </Button>
           </Link>
-          <Link href="/review">
+          <Link href="/register">
             <Button size="sm" className="text-xs gap-1.5">
-              Focus Shell <ArrowRight className="size-3" />
+              Get Started <ArrowRight className="size-3" />
             </Button>
           </Link>
         </div>

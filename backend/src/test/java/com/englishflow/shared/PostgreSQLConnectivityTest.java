@@ -48,17 +48,19 @@ class PostgreSQLConnectivityTest {
     }
 
     @Test
-    @DisplayName("Verify that no premature business tables exist before Flyway migrations")
-    void testNoBusinessTablesExist() throws Exception {
+    @DisplayName("Verify that only approved Flyway tables (app_users) exist and no premature business tables are created")
+    void testSchemaTableIntegrity() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(
-                     "SELECT count(*) FROM information_schema.tables " +
+                     "SELECT table_name FROM information_schema.tables " +
                      "WHERE table_schema = 'public' AND table_name != 'flyway_schema_history'")) {
 
-            assertThat(rs.next()).isTrue();
-            int userTableCount = rs.getInt(1);
-            assertThat(userTableCount).isZero();
+            java.util.List<String> tables = new java.util.ArrayList<>();
+            while (rs.next()) {
+                tables.add(rs.getString(1));
+            }
+            assertThat(tables).containsExactly("app_users");
         }
     }
 }

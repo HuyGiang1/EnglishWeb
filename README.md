@@ -100,7 +100,8 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS
   * M1-T02: Spring Boot Backend Scaffolding
   * M1-T03: Next.js Frontend Scaffolding & Design System Foundation
-* **Next Task**: M1-T04 — Session Authentication & User Registration/Login
+  * M1-T04: Full-Stack Session Authentication Vertical Slice (Registration, Login, Session Management, Protected Dashboard, Logout)
+* **Next Task**: M1-T05 — Vocabulary Domain & Management Vertical Slice
 
 ---
 
