@@ -1,4 +1,4 @@
-﻿# EnglishFlow
+# EnglishFlow
 
 > A modern, minimalist web platform for daily English vocabulary acquisition, spaced repetition review, dictation, and speech shadowing.
 
@@ -25,12 +25,14 @@
 
 EnglishFlow is architected as a modular monorepo balancing developer ergonomics with production-grade security and data integrity:
 
-* **Backend**: Java 21 (Target LTS), Spring Boot 3.x (Proposed), Spring Security, Spring Data JPA.
+* **Backend**: Java 21 LTS, Spring Boot 3.4.7, Spring Security 6.4.x, Spring Data JPA, Flyway.
   * *Architecture Pattern*: Modular Monolith partitioned into strictly bounded context packages (`auth`, `user`, `vocabulary`, `review`, `content`, `dictation`, `shadowing`, `quiz`, `analytics`).
   * *Authentication*: Spring Security `HttpSession` with `JSESSIONID` cookies (`HttpOnly; SameSite=Lax; Secure`) and synchronized CSRF (`X-XSRF-TOKEN`).
-* **Frontend**: Next.js 15 (Proposed, App Router), React 19 (Proposed), TypeScript, Tailwind CSS, shadcn/ui.
-  * *Styling*: Custom monochrome design tokens (near-black foregrounds, pure white/subtle gray canvas, zero saturated accent colors).
-* **Database & Persistence**: PostgreSQL 16+ managed via Flyway versioned migrations.
+* **Frontend**: Next.js 15.5.27 (App Router), React 19.1.0, TypeScript 5, Tailwind CSS v4, shadcn/ui.
+  * *Styling*: Custom monochrome design tokens (near-black `#111111` foregrounds, pure white `#FFFFFF` canvas, `#E5E5E5` borders, zero saturated accent colors).
+  * *Layouts*: Dual-shell architecture—Workspace Shell for dense browsing/configuration and Focus Shell for distraction-free study.
+  * *API Integration*: Same-origin proxy forwarding `/api/*` to Spring Boot (`http://127.0.0.1:8080/api/*`) with typed RFC 7807 client foundation.
+* **Database & Persistence**: PostgreSQL 16+ managed via Flyway versioned migrations and Docker Compose.
   * *Integrity Guarantees*: Engine-level composite foreign keys preventing cross-tenant data association; client-generated submission UUIDs enforcing business-level idempotency; soft deletion for vocabularies; cascading hard deletion for account erasure.
 * **Testing Infrastructure**: JUnit 5, Mockito, Testcontainers (real PostgreSQL instances), Playwright (E2E), React Testing Library.
 
@@ -41,10 +43,16 @@ EnglishFlow is architected as a modular monorepo balancing developer ergonomics 
 ```text
 EnglishFlow/
 ├── .github/              # CI/CD workflows and automated quality gates
-├── backend/              # Spring Boot modular monolith (pending scaffold)
-├── frontend/             # Next.js App Router web application (pending scaffold)
-├── infra/                # Docker compose, PostgreSQL, and reverse proxy configs
-├── scripts/              # Developer automation and database maintenance scripts
+├── backend/              # Spring Boot 3.4.7 modular monolith (Java 21 LTS, Maven wrapper)
+├── frontend/             # Next.js 15.5.27 App Router web application (React 19, Tailwind v4, shadcn/ui)
+│   ├── src/
+│   │   ├── app/          # App Router: root, (workspace) shell, (focus) shell routes
+│   │   ├── components/   # UI primitives (shadcn), layouts (sidebar, header, focus-header)
+│   │   └── lib/          # API client foundation, utilities, design tokens
+│   ├── next.config.ts    # Same-origin reverse proxy rewrites to Spring Boot
+│   └── package.json      # Dependencies and verified npm scripts
+├── infra/                # Docker compose, PostgreSQL 16 container, and environment templates
+├── scripts/              # Developer automation (dev-up, dev-down, dev-status, backend-dev)
 ├── docs/                 # Authoritative project specifications and blueprints
 │   ├── product/          # Product Requirements Document (PRD)
 │   ├── design/           # UI/UX guidelines, design tokens, screen inventory, heatmap
@@ -85,38 +93,61 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 ## 5. Project Development Status
 
-> ⚠️ **APPLICATION SCAFFOLDING PENDING**: The repository currently contains official architectural blueprints, design systems, and data models. Application source code (backend and frontend) has not yet been generated.
+> 🚀 **M1 SCAFFOLDING COMPLETE**: PostgreSQL 16 infrastructure, Spring Boot 3.4.7 backend foundation, and Next.js 15.5.27 frontend application foundation are operational and verified.
 
-* **Current Stage**: Milestone M0 — Discovery & Blueprint (Complete)
-* **Current Task**: M0-T08 — Repository Initialization
-* **Next Stage**: Milestone M1 — First Vertical Slice (Scaffolding Spring Boot, Next.js, and Docker PostgreSQL container)
+* **Current Stage**: Milestone M1 — First Vertical Slice (In Progress)
+* **Completed Tasks**:
+  * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS
+  * M1-T02: Spring Boot Backend Scaffolding
+  * M1-T03: Next.js Frontend Scaffolding & Design System Foundation
+* **Next Task**: M1-T04 — Session Authentication & User Registration/Login
 
 ---
 
 ## 6. Environment Prerequisites
 
-When application scaffolding commences, the following toolchains will be required:
+The following toolchains are verified in the local environment:
 
-* **Java**: OpenJDK 21 (LTS)
-* **Node.js**: Node.js 24 (Active LTS) or LTS equivalent
-* **Package Manager**: pnpm or npm
-* **Database**: PostgreSQL 16+ (or Docker Desktop)
-* **Build Tool**: Apache Maven 3.9+ (or Maven Wrapper)
+* **Java**: OpenJDK 21 LTS
+* **Node.js**: Node.js 26.6.0 (or Node.js 24+)
+* **Package Manager**: npm 11.18.0
+* **Database**: PostgreSQL 16 (Docker Compose)
+* **Build Tool**: Maven Wrapper (`./mvnw`)
 * **Version Control**: Git 2.40+
 
 ---
 
-## 7. Planned Local Development Workflow
-
-*(To be enabled upon completion of Milestone M1 Scaffolding)*
+## 7. Local Development Workflow
 
 ```bash
-# 1. Start local PostgreSQL infrastructure
-docker compose -f infra/docker-compose.yml up -d
+# 1. Start local PostgreSQL infrastructure (PostgreSQL 16 on :5432)
+./scripts/dev-up.sh
+
+# Check infrastructure status and health
+./scripts/dev-status.sh
+
+# Stop infrastructure safely (preserving data volume)
+./scripts/dev-down.sh
 
 # 2. Run backend dev server (Spring Boot on :8080)
+./scripts/backend-dev.sh
+# Or directly:
 cd backend && ./mvnw spring-boot:run
 
+# Verify backend health endpoint
+curl http://localhost:8080/actuator/health
+
 # 3. Run frontend dev server (Next.js on :3000)
-cd frontend && pnpm dev
+cd frontend
+npm run dev
+
+# Quality checks in frontend/
+npm run lint         # ESLint 9
+npm run typecheck    # TypeScript strict check (tsc --noEmit)
+npm run build        # Turbopack production build
+
+# 4. Verify same-origin API proxy to backend
+curl -i http://localhost:3000/api/v1/vocabulary
+# Expected response: HTTP 401 Unauthorized with Set-Cookie: JSESSIONID, XSRF-TOKEN
 ```
+

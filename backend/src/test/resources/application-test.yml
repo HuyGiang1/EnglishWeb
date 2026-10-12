@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: englishflow-backend-test
+
+  datasource:
+    # Never inherit developer credentials. ServiceConnection overrides these inert values.
+    url: jdbc:postgresql://127.0.0.1:1/englishflow_test_fallback_disabled
+    username: unused
+    password: ''
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
