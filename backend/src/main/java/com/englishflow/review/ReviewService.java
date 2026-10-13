@@ -222,7 +222,7 @@ public class ReviewService {
     @Transactional
     public void provisionCardForVocabulary(UUID userId, UUID vocabularyId, LocalDate referenceDate) {
         if (!srsItemRepository.existsByUserIdAndVocabularyId(userId, vocabularyId)) {
-            LocalDate dueDate = referenceDate != null ? referenceDate : LocalDate.now(clock);
+            LocalDate dueDate = referenceDate != null ? referenceDate : LocalDate.now(clock.withZone(resolveUserZone(userId)));
             SrsItem item = new SrsItem(userId, vocabularyId, dueDate);
             try {
                 srsItemRepository.save(item);

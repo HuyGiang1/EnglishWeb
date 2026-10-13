@@ -76,7 +76,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Database integrity violation occurred: {}", ex.getMessage());
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-        if (msg.contains("uq_app_users_email") || msg.contains("app_users")) {
+        if (msg.contains("uq_app_users_email") || (msg.contains("app_users") && msg.contains("email"))) {
             ApiErrorResponse response = ApiErrorResponse.of(
                 "EMAIL_ALREADY_REGISTERED",
                 "An account with this email address already exists.",
@@ -180,6 +180,16 @@ public class GlobalExceptionHandler {
             HttpStatus.UNAUTHORIZED.value()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "METHOD_NOT_ALLOWED",
+            "HTTP method '" + ex.getMethod() + "' is not supported for this endpoint.",
+            HttpStatus.METHOD_NOT_ALLOWED.value()
+        );
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
     @ExceptionHandler(Exception.class)

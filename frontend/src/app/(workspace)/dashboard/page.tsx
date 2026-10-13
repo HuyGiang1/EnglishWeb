@@ -1,268 +1,380 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Sparkles,
-  Headphones,
-  Mic,
-  HelpCircle,
+  BookOpen,
   ArrowRight,
-  Info,
-  Calendar,
-  User as UserIcon,
-  Clock,
   Target,
+  Flame,
+  CheckCircle2,
+  AlertCircle,
+  RotateCcw,
+  Calendar,
+  Layers,
+  History,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth/auth-context";
+import { dashboardApi, type DashboardSummary } from "@/lib/api/dashboard";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const [data, setData] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  return (
-    <div className="space-y-8">
-      {/* Page Header with Real Authenticated Identity */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            {user ? `Welcome back, ${user.displayName}` : "Workspace Overview"}
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Daily command center for spaced repetition and language acquisition.
-          </p>
+  const fetchSummary = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const summary = await dashboardApi.getSummary();
+      setData(summary);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+  // Loading Skeleton State
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-pulse" data-testid="dashboard-loading">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-7 w-56 bg-muted rounded" />
+            <div className="h-4 w-72 bg-muted/60 rounded" />
+          </div>
+          <div className="h-8 w-32 bg-muted rounded" />
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/review">
-            <Button size="sm" className="text-xs gap-1.5 h-8">
-              <Sparkles className="size-3.5" />
-              <span>Review Session</span>
-              <ArrowRight className="size-3" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-border bg-card p-5 space-y-3">
+              <div className="h-3 w-24 bg-muted rounded" />
+              <div className="h-8 w-16 bg-muted rounded" />
+              <div className="h-3 w-32 bg-muted/60 rounded" />
+            </Card>
+          ))}
+        </div>
+
+        <Card className="border-border bg-card p-6 space-y-4">
+          <div className="h-4 w-40 bg-muted rounded" />
+          <div className="h-2 w-full bg-muted rounded" />
+        </Card>
+      </div>
+    );
+  }
+
+  // Error State with Retry
+  if (error || !data) {
+    return (
+      <Card className="max-w-lg mx-auto p-8 border-border bg-card text-center flex flex-col items-center gap-4 my-8" data-testid="dashboard-error">
+        <div className="size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+          <AlertCircle className="size-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Failed to Load Dashboard</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{error || "Unable to reach server"}</p>
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <Button onClick={fetchSummary} size="sm" variant="outline" className="gap-2 text-xs">
+            <RotateCcw className="size-3.5" />
+            <span>Try Again</span>
+          </Button>
+          <Link href="/vocabulary">
+            <Button size="sm" variant="ghost" className="text-xs">
+              Open Vocabulary
             </Button>
           </Link>
         </div>
-      </div>
+      </Card>
+    );
+  }
 
-      {/* Authoritative Account Session Card */}
-      {user && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-border bg-card p-4 text-xs">
-          <div className="flex items-center gap-2.5">
-            <UserIcon className="size-4 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Account</p>
-              <p className="font-semibold text-foreground truncate">{user.email}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Clock className="size-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Timezone</p>
-              <p className="font-semibold text-foreground">{user.timezone}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Target className="size-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase font-mono tracking-wider">Daily Target</p>
-              <p className="font-semibold text-foreground">{user.dailyGoalItems} items / day</p>
-            </div>
-          </div>
-        </div>
-      )}
+  // Formatted Local Date string
+  const formattedDate = new Date(data.currentDate + "T00:00:00").toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-      {/* Milestone Scaffolding Status Alert */}
-      <div className="rounded-md border border-border bg-muted/40 p-4">
-        <div className="flex items-start gap-3">
-          <Info className="size-4 text-foreground shrink-0 mt-0.5" />
-          <div className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">Authentication Active: </span>
-            Spring Security session is authenticated against PostgreSQL.
-            Vocabulary CRUD and spaced repetition review algorithms will connect in Milestone M1-T05.
-            Study analytics and heatmap below remain zeroed until study event telemetry is submitted.
+  const isGoalReached = data.dailyGoalCompletedCount >= data.dailyGoalTarget;
+
+  return (
+    <div className="space-y-8" data-testid="dashboard-content">
+      {/* A. Welcome Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-testid="dashboard-greeting">
+            {data.greeting}
+          </h1>
+          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground font-mono">
+            <Calendar className="size-3.5 text-muted-foreground" />
+            <span data-testid="dashboard-date">{formattedDate}</span>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          {data.dueReviewCount > 0 ? (
+            <Link href="/review">
+              <Button size="sm" className="text-xs gap-1.5 h-8 font-medium" data-testid="header-review-btn">
+                <Sparkles className="size-3.5" />
+                <span>Review Due Cards ({data.dueReviewCount})</span>
+                <ArrowRight className="size-3" />
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/vocabulary">
+              <Button size="sm" variant="outline" className="text-xs gap-1.5 h-8" data-testid="header-vocab-btn">
+                <BookOpen className="size-3.5" />
+                <span>Vocabulary Library</span>
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* Key Metric Overview Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Due For Review */}
-        <Card className="border-border bg-card">
+      {/* B. KPI Overview Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Saved Vocabulary */}
+        <Card className="border-border bg-card" data-testid="kpi-vocabulary">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Due For Review
+            <CardDescription className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span>Saved Vocabulary</span>
+              <BookOpen className="size-3.5 text-muted-foreground" />
             </CardDescription>
-            <CardTitle className="text-3xl font-bold text-foreground">
-              0
+            <CardTitle className="text-3xl font-bold text-foreground font-mono" data-testid="kpi-vocab-count">
+              {data.vocabularyTotal}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-xs text-muted-foreground">
-              SRS review queue is currently empty.
-            </p>
-            <div className="mt-3">
-              <Link href="/review">
-                <Button variant="outline" size="sm" className="text-xs h-7 gap-1">
-                  Launch Review <ArrowRight className="size-3" />
-                </Button>
-              </Link>
-            </div>
+            <Link
+              href="/vocabulary"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+            >
+              <span>{data.vocabularyTotal === 0 ? "Add your first words" : "View word library"}</span>
+              <ArrowRight className="size-3" />
+            </Link>
           </CardContent>
         </Card>
 
-        {/* Daily Goal */}
-        <Card className="border-border bg-card">
+        {/* 2. Due For Review */}
+        <Card className="border-border bg-card" data-testid="kpi-due">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Daily Goal
+            <CardDescription className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span>Due For Review</span>
+              <Sparkles className="size-3.5 text-muted-foreground" />
             </CardDescription>
-            <CardTitle className="text-3xl font-bold text-foreground">
-              0 / 20
+            <CardTitle className="text-3xl font-bold text-foreground font-mono" data-testid="kpi-due-count">
+              {data.dueReviewCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden my-2">
-              <div className="bg-foreground h-full w-0" />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Goal tracking configured in Settings (M2).
-            </p>
+            {data.dueReviewCount > 0 ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
+                <span className="size-1.5 rounded-full bg-foreground" />
+                Cards scheduled today
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <CheckCircle2 className="size-3 text-muted-foreground" />
+                All reviews completed
+              </span>
+            )}
           </CardContent>
         </Card>
 
-        {/* Study Streak */}
-        <Card className="border-border bg-card">
+        {/* 3. Completed Actions Today */}
+        <Card className="border-border bg-card" data-testid="kpi-actions">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Study Streak
+            <CardDescription className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span>Completed Today</span>
+              <Target className="size-3.5 text-muted-foreground" />
             </CardDescription>
-            <CardTitle className="text-3xl font-bold text-foreground">
-              0 Days
+            <CardTitle className="text-3xl font-bold text-foreground font-mono" data-testid="kpi-actions-count">
+              {data.dailyGoalCompletedCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="size-2 rounded-full bg-border" />
-              <span>Awaiting first completed session</span>
-            </div>
-            <p className="text-xs text-muted-foreground/80 mt-1">
-              Streak updates upon study submission.
-            </p>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              Target: {data.dailyGoalTarget} actions
+            </span>
+          </CardContent>
+        </Card>
+
+        {/* 4. Learning Streak */}
+        <Card className="border-border bg-card" data-testid="kpi-streak">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span>Learning Streak</span>
+              <Flame className="size-3.5 text-muted-foreground" />
+            </CardDescription>
+            <CardTitle className="text-3xl font-bold text-foreground font-mono" data-testid="kpi-streak-count">
+              {data.currentStreakDays} <span className="text-sm font-normal text-muted-foreground">days</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {data.streakStatus === "ACTIVE_STUDIED_TODAY" && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
+                <span className="size-1.5 rounded-full bg-foreground" />
+                Active · Studied today
+              </span>
+            )}
+            {data.streakStatus === "ACTIVE_PENDING_TODAY" && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="size-1.5 rounded-full border border-border bg-muted" />
+                Preserved · Pending study
+              </span>
+            )}
+            {data.streakStatus === "BROKEN_RESET" && (
+              <span className="text-[11px] text-muted-foreground">
+                Start a session to build streak
+              </span>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Learning Activity Heatmap Section */}
-      <Card className="border-border bg-card p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-2 border-b border-border">
+      {/* C. Daily Goal Progress Section */}
+      <Card className="border-border bg-card p-6" data-testid="daily-goal-section">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
-              Learning Activity Heatmap
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              GitHub-style greyscale intensity mapping across 365 rolling days.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Daily Habit Target</span>
+              {isGoalReached && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border border-border bg-muted/60 text-foreground" data-testid="goal-achieved-badge">
+                  <CheckCircle2 className="size-3 text-foreground" />
+                  Goal Achieved
+                </span>
+              )}
+            </div>
+            <h2 className="text-lg font-bold text-foreground tracking-tight mt-0.5">
+              {data.dailyGoalCompletedCount} of {data.dailyGoalTarget} actions completed
+            </h2>
           </div>
-          {/* Greyscale Ramp Legend */}
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground">
-            <span>Less</span>
-            <span className="size-2.5 rounded-[1px] bg-[#f5f5f5] border border-border" title="Level 0: 0 actions" />
-            <span className="size-2.5 rounded-[1px] bg-[#d4d4d4]" title="Level 1: 1-9 actions" />
-            <span className="size-2.5 rounded-[1px] bg-[#a3a3a3]" title="Level 2: 10-19 actions" />
-            <span className="size-2.5 rounded-[1px] bg-[#525252]" title="Level 3: 20-39 actions" />
-            <span className="size-2.5 rounded-[1px] bg-[#171717]" title="Level 4: 40+ actions" />
-            <span>More</span>
-          </div>
+          <span className="text-2xl font-bold font-mono text-foreground tracking-tight sm:text-right" data-testid="goal-percent">
+            {data.goalProgressPercentage}%
+          </span>
         </div>
 
-        {/* Placeholder Grid Representation */}
-        <div className="pt-5 pb-2">
-          <div className="rounded-md border border-dashed border-border bg-muted/30 p-8 text-center">
-            <Calendar className="size-6 text-muted-foreground mx-auto mb-2" />
-            <p className="text-xs font-medium text-foreground">
-              Activity Heatmap Canvas (M2-T04)
-            </p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              Ready for learning event stream ingestion. Will render real user reviews, dictations, and quizzes with local timezone reconciliation.
-            </p>
+        {/* Progress Bar */}
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden" role="progressbar" aria-valuenow={data.goalProgressPercentage} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className="bg-foreground h-full transition-all duration-300 ease-out"
+            style={{ width: `${Math.min(100, data.goalProgressPercentage)}%` }}
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+          {isGoalReached
+            ? "Your daily retention quota is met. Any additional practice reinforces memory stability without point penalties."
+            : `Complete ${Math.max(0, data.dailyGoalTarget - data.dailyGoalCompletedCount)} more verified learning actions today to reach your target.`}
+        </p>
+      </Card>
+
+      {/* D. Next Study Action Callout */}
+      <Card className="border-border bg-card p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" data-testid="next-action-callout">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+            <Layers className="size-3.5 text-foreground" />
+            <span>Recommended Modality</span>
           </div>
+          <h3 className="text-base font-semibold text-foreground">
+            {data.dueReviewCount > 0
+              ? `Spaced Repetition Review (${data.dueReviewCount} cards due)`
+              : data.vocabularyTotal === 0
+              ? "Start Capturing Vocabulary"
+              : "Review Session Complete"}
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
+            {data.dueReviewCount > 0
+              ? "Active recall flashcards are due for review. Grade each word (Again / Hard / Good / Easy) to optimize interval spacing."
+              : data.vocabularyTotal === 0
+              ? "Your reference library is currently empty. Add words with IPA phonetics and definitions to begin spaced repetition scheduling."
+              : "All scheduled cards have been reviewed for today. Add new words or explore saved entries in your library."}
+          </p>
+        </div>
+        <div className="shrink-0">
+          {data.dueReviewCount > 0 ? (
+            <Link href="/review">
+              <Button size="sm" className="gap-2 text-xs" data-testid="cta-review-btn">
+                <Sparkles className="size-3.5" />
+                <span>Start Review</span>
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/vocabulary">
+              <Button size="sm" variant="outline" className="gap-2 text-xs" data-testid="cta-vocab-btn">
+                <BookOpen className="size-3.5" />
+                <span>{data.vocabularyTotal === 0 ? "Add Words" : "View Library"}</span>
+              </Button>
+            </Link>
+          )}
         </div>
       </Card>
 
-      {/* Quick Launch Learning Modules */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">
-          Learning Modalities
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Link href="/review" className="group">
-            <Card className="p-4 border-border bg-card transition-colors hover:border-foreground/50 h-full">
-              <div className="flex items-center justify-between">
-                <Sparkles className="size-4 text-foreground" />
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-foreground border border-border">
-                  Vertical Slice
-                </span>
-              </div>
-              <h4 className="mt-3 text-sm font-semibold text-foreground group-hover:underline">
-                Flashcard SRS
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Spaced repetition card testing with SuperMemo-2 algorithm.
-              </p>
-            </Card>
-          </Link>
-
-          <Link href="/dictation" className="group">
-            <Card className="p-4 border-border bg-card transition-colors hover:border-foreground/50 h-full">
-              <div className="flex items-center justify-between">
-                <Headphones className="size-4 text-muted-foreground" />
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                  Milestone M2
-                </span>
-              </div>
-              <h4 className="mt-3 text-sm font-semibold text-foreground">
-                Listening Dictation
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Sentence audio playback and precision word transcription.
-              </p>
-            </Card>
-          </Link>
-
-          <Link href="/shadowing" className="group">
-            <Card className="p-4 border-border bg-card transition-colors hover:border-foreground/50 h-full">
-              <div className="flex items-center justify-between">
-                <Mic className="size-4 text-muted-foreground" />
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                  Milestone M2
-                </span>
-              </div>
-              <h4 className="mt-3 text-sm font-semibold text-foreground">
-                Shadowing Practice
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Native audio mimicry and user recording comparisons.
-              </p>
-            </Card>
-          </Link>
-
-          <Link href="/quiz" className="group">
-            <Card className="p-4 border-border bg-card transition-colors hover:border-foreground/50 h-full">
-              <div className="flex items-center justify-between">
-                <HelpCircle className="size-4 text-muted-foreground" />
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                  Milestone M2
-                </span>
-              </div>
-              <h4 className="mt-3 text-sm font-semibold text-foreground">
-                Diagnostic Quiz
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Multiple choice, cloze tests, and retention diagnostics.
-              </p>
-            </Card>
-          </Link>
+      {/* E. Recent Activity Section */}
+      <Card className="border-border bg-card p-6 space-y-4" data-testid="recent-activity-section">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Recent Study Modalities</h3>
+          </div>
+          <span className="text-[11px] font-mono text-muted-foreground">Verified Activity</span>
         </div>
-      </div>
+
+        {data.recentSessions.length > 0 ? (
+          <div className="divide-y divide-border border-y border-border">
+            {data.recentSessions.map((session, idx) => (
+              <div key={idx} className="py-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] font-medium text-foreground">
+                    {session.type === "FLASHCARD_REVIEW" ? "Flashcard Reviews" : session.type}
+                  </span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground font-mono">{session.count} action{session.count === 1 ? "" : "s"}</span>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {new Date(session.completedAt).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 rounded-md border border-border bg-muted/20 text-center text-xs text-muted-foreground">
+            Zero study actions recorded yet today. Complete reviews to generate telemetry.
+          </div>
+        )}
+      </Card>
+
+      {/* F. Activity Heatmap Placeholder */}
+      <Card className="border-border bg-card p-6 space-y-3" data-testid="heatmap-placeholder">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">52-Week Learning Activity Heatmap</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Longitudinal habit matrix visualizes verified study intensity across a rolling 365-day calendar.
+            </p>
+          </div>
+          <span className="inline-flex items-center self-start px-2 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
+            Scheduled for Milestone M2
+          </span>
+        </div>
+
+        <div className="h-20 w-full rounded border border-dashed border-border bg-muted/20 flex items-center justify-center text-xs text-muted-foreground font-mono">
+          Learning telemetry actively recording · Full 52-week visualization activates in M2
+        </div>
+      </Card>
     </div>
   );
 }

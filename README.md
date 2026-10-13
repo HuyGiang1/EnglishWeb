@@ -93,17 +93,19 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 ## 5. Project Development Status
 
-> 🚀 **M1 SCAFFOLDING COMPLETE**: PostgreSQL 16 infrastructure, Spring Boot 3.4.7 backend foundation, and Next.js 15.5.27 frontend application foundation are operational and verified.
+> 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M1 — First Vertical Slice (In Progress)
+* **Current Stage**: Milestone M1 — First Vertical Slice (**COMPLETED & STABILIZED**)
 * **Completed Tasks**:
-  * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS
-  * M1-T02: Spring Boot Backend Scaffolding
-  * M1-T03: Next.js Frontend Scaffolding & Design System Foundation
-  * M1-T04: Full-Stack Session Authentication Vertical Slice (Registration, Login, Session Management, Protected Dashboard, Logout)
-  * M1-T05: Vocabulary Management Full-Stack Vertical Slice (Flyway V2, Multi-Tenant CRUD, Quick Add, Search, Soft Deletion, Responsive Library)
-  * M1-T06: Spaced Repetition SRS (SM-2) Flashcard Vertical Slice (Flyway V3, Pure SM-2 Engine, Row-Locked Concurrency Idempotency, Activity Event Log, Focus Review UI)
-* **Next Task**: M1-T07 — Daily Dictation Vertical Slice (Audio Playback, Transcription, Diff Comparison Engine)
+  * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
+  * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
+  * M1-T03: Next.js Frontend Scaffolding & Design System Foundation (Next.js 15, Tailwind v4, shadcn/ui, Workspace & Focus Shells)
+  * M1-T04: Full-Stack Session Authentication Vertical Slice (Flyway V1, HttpOnly Cookies, Synchronized CSRF, Protected Guards)
+  * M1-T05: Vocabulary Management Full-Stack Vertical Slice (Flyway V2, Multi-Tenant CRUD, Quick Add, Search, Soft Deletes)
+  * M1-T06: Spaced Repetition SRS Flashcard Review (Flyway V3, SM-2 Engine, Row-Locked Concurrency Idempotency, Activity Events)
+  * M1-T07: Real Dashboard & Learning Progress Vertical Slice (Authoritative Read-Only Summary, Streak State Machine, Daily Goal Tracking)
+  * M1-T08: Milestone M1 Stabilization, Regression Audit & Git Checkpoint (76 Backend Tests, 45 Frontend Tests, 16-Step Full-Stack E2E Audit)
+* **Next Target**: Milestone M2 — Target MVP Expansion (Vocabulary Collections, CSV/TSV Bulk Import, Daily Dictation)
 
 ---
 
