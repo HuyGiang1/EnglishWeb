@@ -67,7 +67,9 @@ class PostgreSQLConnectivityTest {
                 "srs_review_history",
                 "learning_activity_events",
                 "collections",
-                "vocabulary_collections"
+                "vocabulary_collections",
+                "learning_contents",
+                "dictation_attempts"
             );
         }
     }

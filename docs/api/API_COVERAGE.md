@@ -70,9 +70,9 @@ To support rigorous agile delivery and avoid premature feature bloat, endpoint i
 | **07** | **Collections** | MVP | Remove word from collection | `DELETE`| `/api/v1/collections/{id}/vocabularies/{vocabId}` | Path: `id, vocabId` | `204 No Content` | Deletes join row; preserves vocabulary entity |
 | **08** | **SRS Flashcard** | Slice | Fetch due study queue | `GET` | `/api/v1/reviews/queue` | `limit, collection_id` | `200 OK` | Pulls cards with `next_review_at <= NOW()` |
 | **08** | **SRS Flashcard** | Slice | Submit SM-2 card rating | `POST` | `/api/v1/reviews/submissions` | `ReviewSubmissionRequest` | `200 OK` | Business idempotency on `attempt_id`; updates SM-2 |
-| **09** | **Dictation** | MVP | List dictation library | `GET` | `/api/v1/contents?modality=DICTATION` | `difficulty, page, size` | `200 OK` | Hides reference transcripts from exercise list |
+| **09** | **Dictation** | MVP | List dictation library | `GET` | `/api/v1/dictation` | None | `200 OK` | Hides reference transcripts from exercise list |
 | **09** | **Dictation** | MVP | Load dictation exercise | `GET` | `/api/v1/dictation/{contentId}` | Path: `contentId` | `200 OK` | Delivers audio metadata and masked transcript tokens |
-| **09** | **Dictation** | MVP | Submit typed transcript | `POST` | `/api/v1/dictation/submissions` | `DictationSubmissionRequest`| `200 OK` | Business idempotency; authoritative backend Levenshtein diff |
+| **09** | **Dictation** | MVP | Submit typed transcript | `POST` | `/api/v1/dictation/{contentId}/submit` | `DictationSubmitRequest` | `200 OK` | Business idempotency; authoritative backend Levenshtein diff |
 | **10** | **Shadowing** | MVP | List shadowing library | `GET` | `/api/v1/contents?modality=SHADOWING` | `difficulty, page, size` | `200 OK` | Returns content catalog with native audio URLs |
 | **10** | **Shadowing** | MVP | Load shadowing prompt | `GET` | `/api/v1/shadowing/{contentId}` | Path: `contentId` | `200 OK` | Delivers audio URL, timing cues, full transcript |
 | **10** | **Shadowing** | MVP | Complete practice take | `POST` | `/api/v1/shadowing/submissions` | `ShadowingSubmissionRequest`| `200 OK` | Idempotent on `take_id`; browser-only audio, self-rating |
@@ -178,9 +178,11 @@ To support rigorous agile delivery and avoid premature feature bloat, endpoint i
   - User types heard sentence and presses `Mod+Enter` to submit.
   - UI displays an inline monochrome diff: inserted words underlined, omitted words struck through.
 - **Backend Flow**:
-  - `GET /api/v1/dictation/{contentId}` delivers audio URL and masked token structure (`word_count`, punctuation markers) while withholding the reference text.
-  - `POST /api/v1/dictation/submissions` validates submitted text against canonical transcript using authoritative server-side Levenshtein diff engine.
-  - An attempt with accuracy >= 80% logs a verified `DICTATION` action in `learning_activity_events`.
+  - `GET /api/v1/dictation` lists available published exercises with difficulty level and attempt history.
+  - `GET /api/v1/dictation/{contentId}` delivers audio URL, audio duration, topic tag, and masked token structure while strictly concealing the reference text.
+  - `POST /api/v1/dictation/{contentId}/submit` validates submitted text against canonical transcript using authoritative server-side Needleman-Wunsch / Levenshtein diff engine, returning diff tokens and accuracy score.
+  - An accepted completed attempt logs a verified `DICTATION_SENTENCE` action in `learning_activity_events` (regardless of whether score reaches 80% per RISK-09).
+  - Transactional idempotency via advisory locks replays original outcome on identical attempt ID, or returns HTTP 409 on payload mismatch.
 
 #### Screen 10: Shadowing Practice (`/shadowing/:id`)
 - **UI Interaction**:

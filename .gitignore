@@ -1,4 +1,4 @@
-﻿# EnglishFlow — Root .gitignore
+# EnglishFlow — Root .gitignore
 # Purpose: Prevent build artifacts, dependencies, secrets, and temp files from entering version control.
 
 # ==============================================================================

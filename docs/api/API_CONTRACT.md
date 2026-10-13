@@ -426,17 +426,38 @@ All collection endpoints support standard query parameters:
 
 ---
 
+### Endpoint: List Dictation Exercises
+* **Method & Route**: `GET /api/v1/dictation`
+* **Purpose**: List all available published listening exercises with difficulty level and user's best attempt score. Canonical transcripts are withheld.
+* **Response DTO (`200 OK`)**:
+  ```json
+  [
+    {
+      "contentId": "b2000000-0000-0000-0000-000000000042",
+      "title": "Economic Resilience",
+      "topicTag": "Economics",
+      "cefrLevel": "B2",
+      "audioDurationSeconds": 3.44,
+      "bestAccuracyScore": 100.0,
+      "attemptCount": 1
+    }
+  ]
+  ```
+
+---
+
 ### Endpoint: Load Dictation Exercise
 * **Method & Route**: `GET /api/v1/dictation/{contentId}`
-* **Purpose**: Load audio reference and exercise prompt. Masked transcript is withheld.
+* **Purpose**: Load audio reference and exercise prompt. Masked transcript is strictly withheld.
 * **Response DTO (`200 OK`)**:
   ```json
   {
-    "contentId": "7a8b9c0d-1e2f-3a4b-5c6d-e7f8a9b0c1d2",
+    "contentId": "b2000000-0000-0000-0000-000000000042",
     "title": "Economic Resilience",
+    "topicTag": "Economics",
     "cefrLevel": "B2",
-    "audioUrl": "/api/v1/media/audio/curated/dictation-b2-042.mp3",
-    "audioDurationSeconds": 4.5
+    "audioUrl": "/api/v1/media/audio/curated/dictation-b2-042.wav",
+    "audioDurationSeconds": 3.44
   }
   ```
 
@@ -444,7 +465,7 @@ All collection endpoints support standard query parameters:
 
 ### Endpoint: Submit Dictation Transcription
 * **Method & Route**: `POST /api/v1/dictation/{contentId}/submit`
-* **Purpose**: Validate typed transcript against canonical text, score accuracy, and record activity event.
+* **Purpose**: Validate typed transcript against canonical text, score accuracy, produce word diff tokens, and record activity event.
 * **Request DTO**:
   ```json
   {
@@ -461,9 +482,14 @@ All collection endpoints support standard query parameters:
     "accuracyScore": 96.5,
     "wordCount": 10,
     "errorCount": 1,
-    "isPassed": true
+    "isPassed": true,
+    "diffTokens": [
+      { "type": "EQUAL", "canonical": "The", "submitted": "The" },
+      { "type": "SUBSTITUTION", "canonical": "resilience", "submitted": "resillience" }
+    ]
   }
   ```
+* **Headers**: Replayed duplicate returns `Idempotent-Replay: true` header. Conflicting payload returns `HTTP 409 Conflict`.
 
 ---
 

@@ -97,7 +97,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 > 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T01 COMPLETED**)
+* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T03 COMPLETED**)
 * **Completed Tasks**:
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
   * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
@@ -107,8 +107,10 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M1-T06: Spaced Repetition SRS Flashcard Review (Flyway V3, SM-2 Engine, Row-Locked Concurrency Idempotency, Activity Events)
   * M1-T07: Real Dashboard & Learning Progress Vertical Slice (Authoritative Read-Only Summary, Streak State Machine, Daily Goal Tracking)
   * M1-T08: Milestone M1 Stabilization, Regression Audit & Git Checkpoint (76 Backend Tests, 45 Frontend Tests, 16-Step Full-Stack E2E Audit)
-  * M2-T01: Vocabulary Collections & Deck Management (Flyway V4, Many-to-Many Composite Tenant FKs, Non-Destructive Deletion, Real Collection Library & Detail Screens, Quick Add Deck Assignment, 96 Backend Tests, 55 Frontend Tests, 14-Step Full-Stack E2E Verification)
-* **Next Target**: Task M2-T02: CSV/TSV Bulk Vocabulary Import
+  * M2-T01: Vocabulary Collections & Deck Management (Flyway V4/V5, Many-to-Many Composite Tenant FKs, Non-Destructive Deletion, Real Collection Library & Detail Screens, Quick Add Deck Assignment, 99 Backend Tests, 55 Frontend Tests, 14-Step Full-Stack E2E Verification)
+  * M2-T02: CSV / TSV Bulk Vocabulary Import (RFC 4180 Streaming Parser, UTF-8/BOM & Vietnamese Diacritics Support, Dry-Run Deduplication Preview, SKIP/REJECT Policies, PostgreSQL Transaction Advisory Locking, 135 Backend Tests, 69 Frontend Tests, 17-Step Full-Stack E2E Verification)
+  * M2-T03: Daily Dictation Full-Stack Vertical Slice (Flyway V6, 5 Curated Audio Assets with Static Audio Serving `/api/v1/media/audio/**`, `TranscriptNormalizer`, `DictationDiffEngine` with Needleman-Wunsch & Levenshtein Token Alignment, Transaction Advisory Locks for Idempotency, Guaranteed Single `DICTATION_SENTENCE` Activity Logging Regardless of Score, Focus Daily Dictation UI `/dictation`, 165 Backend Tests, 79 Frontend Tests, 18-Step Full-Stack E2E Verification)
+* **Next Target**: Task M2-T04: Speech Shadowing Vertical Slice
 
 ---
 
@@ -159,3 +161,39 @@ curl -i http://localhost:3000/api/v1/vocabulary
 # Expected response: HTTP 401 Unauthorized with Set-Cookie: JSESSIONID, XSRF-TOKEN
 ```
 
+---
+
+## 8. Audio Assets, Licensing & Fresh-Clone Setup
+
+### Licensing & Redistribution Notice
+* **macOS Synthesized Voices**: Local audio synthesized via macOS `say` (e.g. Samantha) is governed by the Apple Software License Agreement, which restricts speech synthesis outputs to private, local personal use. These files are **NOT** CC0, royalty-free, or licensed for public redistribution.
+* **Git Hygiene**: All binary audio assets (`*.wav`) are strictly excluded from version control via `.gitignore`. Unverified proprietary audio files must never be force-committed to the repository.
+
+### Fresh-Clone Developer Audio Provisioning
+To enable audio playback on a fresh clone without proprietary file dependencies:
+```bash
+# Provision local developer audio fixtures (synthetic 22.05 kHz 16-bit PCM WAV)
+./scripts/setup-dev-audio.sh
+
+# Or on macOS with system voices installed (for local non-redistributable development):
+./scripts/setup-dev-audio.sh --spoken
+```
+
+### Missing Asset Graceful Degradation
+* Exercises without resolvable audio assets deliver `isAudioAvailable: false` in summary and detail endpoints.
+* The frontend UI renders an "Audio Missing" badge and disables interaction cards until audio assets are provisioned, preventing broken playback states or deceptive exercise availability.
+
+---
+
+## 9. Historical Replay Snapshot & Schema Evolution
+
+### Flyway V7 Migration (`V7__add_dictation_attempt_snapshots.sql`)
+To guarantee immutable historical feedback when reference transcripts evolve over time:
+* `canonical_transcript_snapshot TEXT`: Persists the exact reference transcript active at attempt submission time.
+* `diff_tokens JSONB`: Persists the frozen array of word-level diff evaluation tokens.
+
+### Idempotency & Replay Semantics
+* **Atomic Persistence**: Evaluation snapshots are saved in the same transaction as `dictation_attempts` and `learning_activity_events`.
+* **Frozen Replay**: Exact resubmission with identical `attempt_id`, `submittedTranscript`, and `durationSeconds` returns the stored snapshot without re-evaluating against modified reference texts.
+* **Legacy Compatibility**: Pre-V7 historical rows lacking snapshots gracefully fall back to dynamic evaluation against the current content row.
+* **Conflict Guard**: Reusing an `attempt_id` with altered payloads returns `409 Conflict`.

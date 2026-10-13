@@ -23,6 +23,7 @@ import java.util.UUID;
 public class LearningActivityEvent {
 
     public static final String EVENT_TYPE_FLASHCARD_REVIEW = "FLASHCARD_REVIEW";
+    public static final String EVENT_TYPE_DICTATION_SENTENCE = "DICTATION_SENTENCE";
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

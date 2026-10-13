@@ -191,6 +191,46 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.dictation.exception.ExerciseNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleExerciseNotFound(com.englishflow.dictation.exception.ExerciseNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "RESOURCE_NOT_FOUND",
+            "The requested resource was not found.",
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.dictation.exception.DictationConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleDictationConflict(com.englishflow.dictation.exception.DictationConflictException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "IDEMPOTENCY_CONFLICT",
+            ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.dictation.exception.DictationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDictationException(com.englishflow.dictation.exception.DictationException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            ex.getCode() != null ? ex.getCode() : "BAD_REQUEST",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(org.springframework.dao.OptimisticLockingFailureException ex) {
         ApiErrorResponse response = ApiErrorResponse.of(
