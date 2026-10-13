@@ -50,8 +50,8 @@ To support rigorous agile delivery and avoid premature feature bloat, endpoint i
 | **01** | **Authentication** | Slice | Fetch CSRF token | `GET` | `/api/v1/auth/csrf` | None | `200 OK` | Emits `XSRF-TOKEN` cookie for subsequent mutations |
 | **01** | **Authentication** | Slice | Log out session | `POST` | `/api/v1/auth/logout` | None | `204 No Content` | CSRF required; invalidates session & clears cookie |
 | **02** | **Dashboard** | Slice | Fetch summary & streaks | `GET` | `/api/v1/dashboard/summary` | None | `200 OK` | Cached per-minute; authoritative streak calculation |
-| **02** | **Dashboard** | MVP | Render activity heatmap | `GET` | `/api/v1/dashboard/heatmap` | `year`, `timezone` | `200 OK` | Aggregated by user IANA local calendar days |
-| **02** | **Dashboard** | MVP | Inspect modality breakdown | `GET` | `/api/v1/dashboard/activity-breakdown` | `from_date`, `to_date` | `200 OK` | Returns count & minutes across all 4 modalities |
+| **02** | **Dashboard** | MVP | Render activity heatmap | `GET` | `/api/v1/analytics/activity-heatmap` | None (aliased `/dashboard/heatmap`) | `200 OK` | Aggregated by user IANA local calendar days; 52-week zero-filled grid |
+| **02** | **Dashboard** | MVP | Inspect modality breakdown | `GET` | `/api/v1/analytics/activity-heatmap` | Included in `days[date].breakdown` | `200 OK` | Returns atomic counts across all 4 study modalities |
 | **03** | **Vocabulary List** | Slice | Browse library / paginate | `GET` | `/api/v1/vocabularies` | `page, size, query, sort`| `200 OK` | Indexed `user_id, term`; filters out `deleted_at` |
 | **03** | **Vocabulary List** | Slice | Live duplicate checking | `GET` | `/api/v1/vocabularies/check-duplicate` | `term` | `200 OK` | Debounced 300ms on frontend input |
 | **04** | **Quick Add Modal** | Slice | Submit new word entry | `POST` | `/api/v1/vocabularies` | `CreateVocabularyRequest` | `201 Created` | CSRF required; initializes active `srs_items` row |

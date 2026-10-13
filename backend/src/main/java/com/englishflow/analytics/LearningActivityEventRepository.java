@@ -44,5 +44,22 @@ public interface LearningActivityEventRepository extends JpaRepository<LearningA
     """)
     List<Object[]> findRecentSessionSummaries(@org.springframework.data.repository.query.Param("userId") UUID userId);
 
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT e.historicalLocalDate AS historicalLocalDate,
+               e.eventType AS eventType,
+               COUNT(e.id) AS actionCount
+        FROM LearningActivityEvent e
+        WHERE e.userId = :userId
+          AND e.historicalLocalDate >= :startDate
+          AND e.historicalLocalDate <= :endDate
+        GROUP BY e.historicalLocalDate, e.eventType
+        ORDER BY e.historicalLocalDate ASC
+    """)
+    List<DailyActivityProjection> findActivityCountsByDateRange(
+        @org.springframework.data.repository.query.Param("userId") UUID userId,
+        @org.springframework.data.repository.query.Param("startDate") LocalDate startDate,
+        @org.springframework.data.repository.query.Param("endDate") LocalDate endDate
+    );
+
     long countByUserId(UUID userId);
 }

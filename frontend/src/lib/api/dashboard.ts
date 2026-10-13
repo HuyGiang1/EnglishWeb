@@ -25,4 +25,7 @@ export const dashboardApi = {
   getSummary: async (): Promise<DashboardSummary> => {
     return apiClient.get<DashboardSummary>("/api/v1/dashboard/summary");
   },
+  getHeatmap: async (): Promise<import("./analytics").HeatmapResponse> => {
+    return apiClient.get<import("./analytics").HeatmapResponse>("/api/v1/analytics/activity-heatmap");
+  },
 };

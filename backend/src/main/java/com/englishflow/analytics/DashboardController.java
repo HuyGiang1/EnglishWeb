@@ -1,6 +1,7 @@
 package com.englishflow.analytics;
 
 import com.englishflow.analytics.dto.DashboardSummaryResponse;
+import com.englishflow.analytics.dto.HeatmapResponse;
 import com.englishflow.user.User;
 import com.englishflow.user.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/v1/dashboard", "/api/v1/analytics"})
 public class DashboardController {
 
     private final AnalyticsService analyticsService;
@@ -34,10 +34,29 @@ public class DashboardController {
             .orElseThrow(() -> new BadCredentialsException("User not found: " + email));
     }
 
-    @GetMapping({"/summary", "/dashboard"})
+    /**
+     * Dashboard Summary Metrics.
+     * Canonical Route: GET /api/v1/dashboard/summary
+     * Supported Alias: GET /api/v1/analytics/dashboard
+     */
+    @GetMapping({"/api/v1/dashboard/summary", "/api/v1/analytics/dashboard"})
     public ResponseEntity<DashboardSummaryResponse> getSummary(Authentication authentication) {
         UUID userId = getAuthenticatedUserId(authentication);
         DashboardSummaryResponse response = analyticsService.getDashboardSummary(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 52-Week Learning Activity Heatmap.
+     * Canonical Route: GET /api/v1/analytics/activity-heatmap
+     * Supported Aliases:
+     *   - GET /api/v1/dashboard/activity-heatmap
+     *   - GET /api/v1/dashboard/heatmap
+     */
+    @GetMapping({"/api/v1/analytics/activity-heatmap", "/api/v1/dashboard/activity-heatmap", "/api/v1/dashboard/heatmap"})
+    public ResponseEntity<HeatmapResponse> getActivityHeatmap(Authentication authentication) {
+        UUID userId = getAuthenticatedUserId(authentication);
+        HeatmapResponse response = analyticsService.getActivityHeatmap(userId);
         return ResponseEntity.ok(response);
     }
 }

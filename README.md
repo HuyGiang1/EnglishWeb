@@ -198,3 +198,37 @@ To guarantee immutable historical feedback when reference transcripts evolve ove
 * **Frozen Replay**: Exact resubmission with identical `attempt_id`, `submittedTranscript`, and `durationSeconds` returns the stored snapshot without re-evaluating against modified reference texts.
 * **Legacy Compatibility**: Pre-V7 historical rows lacking snapshots gracefully fall back to dynamic evaluation against the current content row.
 * **Conflict Guard**: Reusing an `attempt_id` with altered payloads returns `409 Conflict`.
+
+---
+
+## 10. 52-Week Learning Activity Heatmap Architecture & Semantics
+
+### Calendar Window & Week Alignment Formula
+* **Grid Format**: Exactly 52 ISO-8601 week columns × 7 weekday rows (Monday to Sunday, 364 calendar cells).
+* **End Date Formula**: Sunday of the current week anchored in the user's authoritative IANA timezone (`today.plusDays(7 - today.getDayOfWeek().getValue())`).
+* **Start Date Formula**: `endDate.minusDays(52 * 7 - 1)` (always a Monday, exactly 52 full weeks prior).
+* **Deterministic Boundary States**:
+  * `ACTIVE_DAY`: Calendar day with $\ge 1$ verified qualifying learning activity.
+  * `ZERO_ACTIVITY`: Past calendar day on/after user registration with 0 activity events.
+  * `PRE_REGISTRATION`: Past calendar day prior to account registration date (rendered as distinct `#FAFAFA` dashed-border state).
+  * `FUTURE_DATE`: Padded days between tomorrow and the end of the current week (rendered with zero intensity, non-interactive).
+
+### Data Source & Sub-Millisecond Aggregation
+* **Authoritative Source**: Immutable `learning_activity_events` table exclusively. Passive navigation, dictionary queries, and bulk vocabulary imports generate **zero** events.
+* **Index Utilization**: Composite index `idx_activity_user_local_date (user_id, historical_local_date)` powers single-query group aggregation returning in $< 1.5\text{ ms}$ for thousands of events.
+* **Frozen Historical Local Dates**: Every accepted event stores a frozen `historical_local_date` determined at creation time under the active timezone. Subsequent profile timezone changes never rewrite past history.
+* **Zero-Filled Calendar Guarantee**: The backend returns a fully populated `Map<String, DayActivityDto>` for all 364 dates; the frontend never performs client-side timezone shifting or fake date estimation.
+
+### Monochrome Intensity Tiers & Goal Dot
+* **Level 0**: 0 actions (`#F5F5F5`)
+* **Level 1**: 1–9 actions (`#D4D4D4`)
+* **Level 2**: 10–19 actions (`#A3A3A3`)
+* **Level 3**: 20–39 actions (`#525252`)
+* **Level 4**: 40+ actions (`#171717`)
+* **Goal Indicator**: Days where daily action count meets or exceeds the user's configured `daily_goal_items` render a high-contrast inner dot indicator.
+
+### Accessibility & Keyboard Ergonomics
+* Full 52×7 ARIA `grid` with `gridcell` semantics and explicit `aria-label` describing date, count, and breakdown.
+* Roving `tabIndex`: Only the currently active/today cell is focusable by default, avoiding 364 tab stops.
+* Arrow key navigation (`ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`, `Home`, `End`).
+* Mobile slide-up `Sheet` drawer reveals complete breakdown on touch.

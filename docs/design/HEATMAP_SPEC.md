@@ -294,11 +294,21 @@ Accept: application/json
 }
 ```
 
----
-
 ## 9. Fallback & Responsive States
 
 1. **Desktop ($\ge$ 1024px)**: Full 52-week horizontal calendar inline with sticky month and weekday coordinates.
 2. **Mobile (< 768px)**: Segmented control: `[ Last 90 Days | Full Year (Scroll) ]`. Tapping any cell opens a clean bottom slide-up `Drawer` displaying day statistics.
 3. **Loading State**: 52 columns × 7 rows of skeleton blocks in `#F5F5F5` with subtle 100ms fade to maintain zero Cumulative Layout Shift (CLS = 0).
 4. **Error State**: Non-blocking neutral warning alert (`Lucide AlertCircle`, `#737373`) with inline `[ Retry ]` button.
+
+---
+
+## 10. Event Granularity & Semantic Reconciliation (Milestone M2-T06)
+
+### 10.1 Diagnostic Quiz Granularity Reconciliation
+* **Authoritative Implementation Reality**: In Milestone M2-T05, the Diagnostic Quiz assessment engine logs exactly **1** `QUIZ_QUESTION` event in `learning_activity_events` upon successful completion of an entire quiz attempt (`attempt_id`). Draft answers and in-progress navigation generate zero events.
+* **Granularity Mapping**:
+  * In the API breakdown (`breakdown.quizQuestions`), this value counts qualifying completed quiz assessment units recorded in the database.
+  * In the UI presentation, this metric is labeled honestly as **"Quizzes"** (or completed diagnostic assessments) rather than claiming individual answered questions, preventing misleading inflated volume representation.
+* **Zero Double-Counting**: Neither individual question drafts nor replayed completions are permitted to generate multiple activity events. Exactly 1 event per completed attempt is recorded, matching the atomic attempt idempotency contract.
+* **Volume Threshold Alignment**: Intensity tiers (`Level 1: 1–9`, `Level 2: 10–19`, `Level 3: 20–39`, `Level 4: 40+`) operate on total qualifying activity events. An assessment completion contributes 1 unit to the daily total.

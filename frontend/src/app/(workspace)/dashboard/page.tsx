@@ -18,23 +18,40 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { dashboardApi, type DashboardSummary } from "@/lib/api/dashboard";
+import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
+import type { HeatmapResponse } from "@/lib/api/analytics";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardSummary | null>(null);
+  const [heatmapData, setHeatmapData] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [heatmapLoading, setHeatmapLoading] = useState<boolean>(true);
+  const [heatmapError, setHeatmapError] = useState<string | null>(null);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setHeatmapLoading(true);
+    setHeatmapError(null);
     try {
-      const summary = await dashboardApi.getSummary();
+      const [summary, heatmap] = await Promise.all([
+        dashboardApi.getSummary(),
+        dashboardApi.getHeatmap().catch((err: unknown) => {
+          setHeatmapError(err instanceof Error ? err.message : "Failed to load heatmap");
+          return null;
+        }),
+      ]);
       setData(summary);
+      if (heatmap) {
+        setHeatmapData(heatmap);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
       setError(msg);
     } finally {
       setLoading(false);
+      setHeatmapLoading(false);
     }
   }, []);
 
@@ -357,24 +374,14 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      {/* F. Activity Heatmap Placeholder */}
-      <Card className="border-border bg-card p-6 space-y-3" data-testid="heatmap-placeholder">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">52-Week Learning Activity Heatmap</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Longitudinal habit matrix visualizes verified study intensity across a rolling 365-day calendar.
-            </p>
-          </div>
-          <span className="inline-flex items-center self-start px-2 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
-            Scheduled for Milestone M2
-          </span>
-        </div>
-
-        <div className="h-20 w-full rounded border border-dashed border-border bg-muted/20 flex items-center justify-center text-xs text-muted-foreground font-mono">
-          Learning telemetry actively recording · Full 52-week visualization activates in M2
-        </div>
-      </Card>
+      {/* F. 52-Week Learning Activity Heatmap */}
+      <HeatmapCalendar
+        data={heatmapData}
+        isLoading={heatmapLoading}
+        isError={!!heatmapError}
+        error={heatmapError}
+        onRetry={fetchSummary}
+      />
     </div>
   );
 }
