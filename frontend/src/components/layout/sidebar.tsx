@@ -70,8 +70,8 @@ export const navStudyItems: NavItem[] = [
     title: "Quiz",
     href: "/quiz",
     icon: HelpCircle,
-    badge: "M2",
-    isUpcoming: true,
+    badge: "Focus",
+    isUpcoming: false,
   },
 ];
 

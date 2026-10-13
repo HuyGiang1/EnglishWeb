@@ -70,7 +70,10 @@ class PostgreSQLConnectivityTest {
                 "vocabulary_collections",
                 "learning_contents",
                 "dictation_attempts",
-                "shadowing_takes"
+                "shadowing_takes",
+                "quiz_questions",
+                "quiz_attempts",
+                "quiz_answers"
             );
         }
     }

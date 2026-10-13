@@ -261,6 +261,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.quiz.exception.QuizNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleQuizNotFound(com.englishflow.quiz.exception.QuizNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "QUIZ_NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.quiz.exception.QuizConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleQuizConflict(com.englishflow.quiz.exception.QuizConflictException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "IDEMPOTENCY_CONFLICT",
+            ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.quiz.exception.QuizException.class)
+    public ResponseEntity<ApiErrorResponse> handleQuizException(com.englishflow.quiz.exception.QuizException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            ex.getCode() != null ? ex.getCode() : "VALIDATION_FAILED",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
         ApiErrorResponse response = ApiErrorResponse.of(
