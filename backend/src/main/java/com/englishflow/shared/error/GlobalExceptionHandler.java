@@ -85,6 +85,15 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
+        if (msg.contains("uq_srs_review_attempt") || msg.contains("uq_activity_user_attempt")) {
+            ApiErrorResponse response = ApiErrorResponse.of(
+                "IDEMPOTENCY_CONFLICT",
+                "Attempt ID has already been processed with a concurrent submission.",
+                HttpStatus.CONFLICT.value()
+            );
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        }
+
         ApiErrorResponse response = ApiErrorResponse.of(
             "CONFLICT",
             "A database integrity conflict occurred.",
@@ -108,6 +117,36 @@ public class GlobalExceptionHandler {
         ApiErrorResponse response = ApiErrorResponse.of(
             "DUPLICATE_VOCABULARY",
             ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.review.exception.IdempotencyConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyConflict(com.englishflow.review.exception.IdempotencyConflictException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "IDEMPOTENCY_CONFLICT",
+            ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.review.exception.SrsItemNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleSrsItemNotFound(com.englishflow.review.exception.SrsItemNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(org.springframework.dao.OptimisticLockingFailureException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "OPTIMISTIC_LOCK_CONFLICT",
+            "A concurrent modification conflict occurred. Please retry your review.",
             HttpStatus.CONFLICT.value()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);

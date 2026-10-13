@@ -60,7 +60,13 @@ class PostgreSQLConnectivityTest {
             while (rs.next()) {
                 tables.add(rs.getString(1));
             }
-            assertThat(tables).containsExactlyInAnyOrder("app_users", "vocabularies");
+            assertThat(tables).containsExactlyInAnyOrder(
+                "app_users",
+                "vocabularies",
+                "srs_items",
+                "srs_review_history",
+                "learning_activity_events"
+            );
         }
     }
 }

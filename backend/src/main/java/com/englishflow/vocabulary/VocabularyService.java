@@ -21,9 +21,14 @@ import java.util.UUID;
 public class VocabularyService {
 
     private final VocabularyRepository vocabularyRepository;
+    private final com.englishflow.review.ReviewService reviewService;
 
-    public VocabularyService(VocabularyRepository vocabularyRepository) {
+    public VocabularyService(
+        VocabularyRepository vocabularyRepository,
+        com.englishflow.review.ReviewService reviewService
+    ) {
         this.vocabularyRepository = vocabularyRepository;
+        this.reviewService = reviewService;
     }
 
     @Transactional
@@ -55,6 +60,7 @@ public class VocabularyService {
         );
 
         Vocabulary saved = vocabularyRepository.save(vocabulary);
+        reviewService.provisionCardForVocabulary(userId, saved.getId(), null);
         return VocabularyResponse.fromEntity(saved);
     }
 
@@ -135,6 +141,7 @@ public class VocabularyService {
 
         vocabulary.softDelete();
         vocabularyRepository.save(vocabulary);
+        reviewService.suspendCardForVocabulary(userId, vocabularyId);
     }
 
     @Transactional(readOnly = true)
