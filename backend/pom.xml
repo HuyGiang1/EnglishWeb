@@ -66,6 +66,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- CSV / TSV Parsing (RFC 4180, Excel, TSV) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.12.0</version>
+        </dependency>
+
         <!-- Testing & Verification -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

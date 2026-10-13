@@ -24,21 +24,26 @@ public class VocabularyService {
     private final com.englishflow.review.ReviewService reviewService;
     private final CollectionRepository collectionRepository;
     private final VocabularyCollectionRepository vocabularyCollectionRepository;
+    private final UserVocabularyLockCoordinator userVocabularyLockCoordinator;
 
     public VocabularyService(
         VocabularyRepository vocabularyRepository,
         com.englishflow.review.ReviewService reviewService,
         CollectionRepository collectionRepository,
-        VocabularyCollectionRepository vocabularyCollectionRepository
+        VocabularyCollectionRepository vocabularyCollectionRepository,
+        UserVocabularyLockCoordinator userVocabularyLockCoordinator
     ) {
         this.vocabularyRepository = vocabularyRepository;
         this.reviewService = reviewService;
         this.collectionRepository = collectionRepository;
         this.vocabularyCollectionRepository = vocabularyCollectionRepository;
+        this.userVocabularyLockCoordinator = userVocabularyLockCoordinator;
     }
 
     @Transactional
     public VocabularyResponse createVocabulary(UUID userId, CreateVocabularyRequest request) {
+        userVocabularyLockCoordinator.acquireUserVocabularyLock(userId);
+
         Collection targetCollection = null;
         if (request.collectionId() != null) {
             targetCollection = collectionRepository.findByIdAndUserId(request.collectionId(), userId)

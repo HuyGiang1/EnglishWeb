@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Upload,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
@@ -157,6 +158,13 @@ export default function VocabularyPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/vocabulary/import"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <Upload className="mr-1.5 h-4 w-4" />
+            Import
+          </Link>
           <Button onClick={() => setIsQuickAddOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" />
             Add Word <kbd className="ml-1 text-[10px] font-mono opacity-60">C</kbd>

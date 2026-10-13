@@ -272,13 +272,17 @@ All collection endpoints support standard query parameters:
   ```json
   {
     "totalRows": 45,
-    "validRows": 43,
+    "validRows": 40,
+    "duplicateRows": 3,
     "errorRows": 2,
     "errors": [
       { "rowNumber": 12, "reason": "Missing required term or definition" }
     ],
+    "previewRows": [
+      { "rowNumber": 2, "term": "metaphor", "partOfSpeech": "noun", "vietnameseMeaning": "phép ẩn dụ", "status": "VALID", "validationMessage": null }
+    ],
     "previewSample": [
-      { "term": "metaphor", "partOfSpeech": "noun", "vietnameseMeaning": "phép ẩn dụ" }
+      { "rowNumber": 2, "term": "metaphor", "partOfSpeech": "noun", "vietnameseMeaning": "phép ẩn dụ", "status": "VALID" }
     ]
   }
   ```
@@ -296,13 +300,24 @@ All collection endpoints support standard query parameters:
         "term": "metaphor",
         "partOfSpeech": "noun",
         "vietnameseMeaning": "phép ẩn dụ",
-        "englishDefinition": "A figure of speech."
+        "englishDefinition": "A figure of speech.",
+        "difficultyLevel": "B2"
       }
     ],
-    "collectionId": "e3a2b1c0-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+    "collectionId": "e3a2b1c0-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+    "duplicatePolicy": "SKIP"
   }
   ```
-* **Response DTO (`200 OK`)**: `{ "importedCount": 43 }`.
+* **Response DTO (`200 OK`)**: `{ "importedCount": 40, "skippedCount": 3, "rejectedCount": 0 }`.
+
+---
+
+### Endpoint: Bulk Import Template Download
+* **Method & Route**: `GET /api/v1/vocabulary/bulk-import/template`
+* **Purpose**: Download official CSV/TSV vocabulary template with UTF-8 BOM and example rows.
+* **Query Parameters**:
+  * `format` (optional, default `csv`): `csv` or `tsv`.
+* **Response (`200 OK`)**: File binary stream with `Content-Disposition: attachment; filename="englishflow_vocabulary_template.{format}"`.
 
 ---
 

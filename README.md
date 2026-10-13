@@ -18,6 +18,8 @@
 4. **Speech Shadowing**: Native audio pacing paired with browser-native recording comparison and self-assessment scoring.
 5. **Diagnostic Quizzes**: Multiple-choice and fill-in-the-blank lexical assessments with randomized question banks.
 6. **Monochrome Activity Heatmap**: GitHub-style 365-day study consistency matrix aggregated strictly against user local calendar timezones.
+7. **Vocabulary Collections & Decks**: Organize vocabulary into structured decks and thematic categories with non-destructive deletion guarantees.
+8. **Bulk Vocabulary Import**: Ingest CSV/TSV spreadsheets with UTF-8/BOM support, Vietnamese diacritics, dry-run preview, duplicate handling policies, and zero-activity SRS provisioning.
 
 ---
 

@@ -34,15 +34,18 @@ public class VocabularyController {
 
     private final VocabularyService vocabularyService;
     private final CollectionService collectionService;
+    private final BulkImportService bulkImportService;
     private final UserRepository userRepository;
 
     public VocabularyController(
         VocabularyService vocabularyService,
         CollectionService collectionService,
+        BulkImportService bulkImportService,
         UserRepository userRepository
     ) {
         this.vocabularyService = vocabularyService;
         this.collectionService = collectionService;
+        this.bulkImportService = bulkImportService;
         this.userRepository = userRepository;
     }
 
@@ -159,5 +162,58 @@ public class VocabularyController {
         java.util.List<com.englishflow.vocabulary.dto.CollectionSummaryDto> collections =
             collectionService.getCollectionsForVocabulary(userId, id);
         return ResponseEntity.ok(collections);
+    }
+
+    @PostMapping(value = "/bulk-import/preview", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<com.englishflow.vocabulary.dto.BulkImportPreviewResponse> previewBulkImport(
+        @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+        Authentication authentication
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+        com.englishflow.vocabulary.dto.BulkImportPreviewResponse response = bulkImportService.previewImport(userId, file);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/bulk-import/confirm")
+    public ResponseEntity<com.englishflow.vocabulary.dto.BulkImportConfirmResponse> confirmBulkImport(
+        @Valid @RequestBody com.englishflow.vocabulary.dto.BulkImportConfirmRequest request,
+        Authentication authentication
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+        com.englishflow.vocabulary.dto.BulkImportConfirmResponse response = bulkImportService.confirmImport(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> importFile(
+        @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+        @RequestParam(value = "dry_run", defaultValue = "false") boolean dryRun,
+        @RequestParam(value = "collectionId", required = false) UUID collectionId,
+        @RequestParam(value = "duplicatePolicy", defaultValue = "SKIP") String duplicatePolicy,
+        Authentication authentication
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+        if (dryRun) {
+            return ResponseEntity.ok(bulkImportService.previewImport(userId, file));
+        } else {
+            com.englishflow.vocabulary.dto.BulkImportConfirmResponse response =
+                bulkImportService.importDirect(userId, file, collectionId, duplicatePolicy);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        }
+    }
+
+    @GetMapping("/bulk-import/template")
+    public ResponseEntity<byte[]> downloadTemplate(
+        @RequestParam(value = "format", defaultValue = "csv") String format
+    ) {
+        byte[] content = bulkImportService.generateTemplate(format);
+        boolean isTsv = "tsv".equalsIgnoreCase(format) || "tab".equalsIgnoreCase(format);
+        String filename = isTsv ? "englishflow_vocabulary_template.tsv" : "englishflow_vocabulary_template.csv";
+        String mediaType = isTsv ? "text/tab-separated-values; charset=UTF-8" : "text/csv; charset=UTF-8";
+
+        return ResponseEntity.ok()
+            .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, mediaType)
+            .body(content);
     }
 }

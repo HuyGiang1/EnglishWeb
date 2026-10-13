@@ -160,6 +160,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.vocabulary.exception.BulkImportException.class)
+    public ResponseEntity<ApiErrorResponse> handleBulkImportException(com.englishflow.vocabulary.exception.BulkImportException ex) {
+        HttpStatus status = "CONFLICT".equalsIgnoreCase(ex.getErrorCode()) ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+        ApiErrorResponse response = ApiErrorResponse.of(
+            ex.getErrorCode() != null ? ex.getErrorCode() : "BAD_REQUEST",
+            ex.getMessage(),
+            status.value()
+        );
+        return ResponseEntity.status(status).body(response);
+    }
+
     @ExceptionHandler(com.englishflow.review.exception.IdempotencyConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleIdempotencyConflict(com.englishflow.review.exception.IdempotencyConflictException ex) {
         ApiErrorResponse response = ApiErrorResponse.of(
