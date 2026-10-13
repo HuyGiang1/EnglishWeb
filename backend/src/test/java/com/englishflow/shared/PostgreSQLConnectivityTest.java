@@ -69,7 +69,8 @@ class PostgreSQLConnectivityTest {
                 "collections",
                 "vocabulary_collections",
                 "learning_contents",
-                "dictation_attempts"
+                "dictation_attempts",
+                "shadowing_takes"
             );
         }
     }

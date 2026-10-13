@@ -97,7 +97,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 > 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T03 COMPLETED**)
+* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T04 COMPLETED**)
 * **Completed Tasks**:
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
   * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
@@ -109,8 +109,9 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M1-T08: Milestone M1 Stabilization, Regression Audit & Git Checkpoint (76 Backend Tests, 45 Frontend Tests, 16-Step Full-Stack E2E Audit)
   * M2-T01: Vocabulary Collections & Deck Management (Flyway V4/V5, Many-to-Many Composite Tenant FKs, Non-Destructive Deletion, Real Collection Library & Detail Screens, Quick Add Deck Assignment, 99 Backend Tests, 55 Frontend Tests, 14-Step Full-Stack E2E Verification)
   * M2-T02: CSV / TSV Bulk Vocabulary Import (RFC 4180 Streaming Parser, UTF-8/BOM & Vietnamese Diacritics Support, Dry-Run Deduplication Preview, SKIP/REJECT Policies, PostgreSQL Transaction Advisory Locking, 135 Backend Tests, 69 Frontend Tests, 17-Step Full-Stack E2E Verification)
-  * M2-T03: Daily Dictation Full-Stack Vertical Slice (Flyway V6, 5 Curated Audio Assets with Static Audio Serving `/api/v1/media/audio/**`, `TranscriptNormalizer`, `DictationDiffEngine` with Needleman-Wunsch & Levenshtein Token Alignment, Transaction Advisory Locks for Idempotency, Guaranteed Single `DICTATION_SENTENCE` Activity Logging Regardless of Score, Focus Daily Dictation UI `/dictation`, 165 Backend Tests, 79 Frontend Tests, 18-Step Full-Stack E2E Verification)
-* **Next Target**: Task M2-T04: Speech Shadowing Vertical Slice
+  * M2-T03: Daily Dictation Full-Stack Vertical Slice (Flyway V6/V7, Curated Audio Assets with Static Audio Serving `/api/v1/media/audio/**`, `TranscriptNormalizer`, `DictationDiffEngine` with Needleman-Wunsch & Levenshtein Token Alignment, Transaction Advisory Locks for Idempotency, Guaranteed Single `DICTATION_SENTENCE` Activity Logging, Focus Daily Dictation UI `/dictation`, 179 Backend Tests, 80 Frontend Tests, 18-Step Full-Stack E2E Verification)
+  * M2-T04: Speech Shadowing Full-Stack Vertical Slice & Reliability Audit (Flyway V8, 5 Curated CEFR Shadowing Assets, `audio-manifest.json` audio readiness metadata distinguishing genuine spoken audio from synthetic test tone fixtures, `MediaRecorder` browser voice capture with safe lifecycle/cleanup and unmount track termination, 4-tier honest self-assessment reflection without fake AI scores, server-side bounded duration validation, PostgreSQL transaction advisory lock idempotency across Matrix A–G, atomic `SHADOWING_TAKE` activity logging, Focus Shadowing UI `/shadowing`, 204 Backend Tests, 98 Frontend Tests, 16-Step Full-Stack E2E Verification)
+* **Next Target**: Task M2-T05: Diagnostic Quiz Engine Vertical Slice
 
 ---
 

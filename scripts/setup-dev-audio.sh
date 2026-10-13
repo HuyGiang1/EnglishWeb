@@ -27,13 +27,18 @@ echo "==========================================================================
 echo "EnglishFlow — Dictation Audio Provisioning (Mode: ${MODE})"
 echo "=============================================================================="
 
-# Sentences and target durations for the 5 curated starter exercises
+# Sentences and target durations for curated starter exercises (Dictation & Shadowing)
 EXERCISES=(
   "dictation-a1-001.wav|I drink a cup of coffee every morning before work.|2.71"
   "dictation-a2-002.wav|We are going to visit the modern art museum on Saturday afternoon.|3.59"
   "dictation-b1-015.wav|Online learning platforms allow students to study at their own pace.|3.76"
   "dictation-b2-042.wav|The country showed great economic resilience during the crisis.|3.44"
   "dictation-c1-088.wav|Empirical evidence is fundamental to formulating hypotheses and drawing rigorous conclusions.|5.33"
+  "shadowing-a1-001.wav|Good morning, how are you doing today?|2.50"
+  "shadowing-a2-002.wav|Could you please tell me the way to the train station?|3.10"
+  "shadowing-b1-015.wav|Practicing every day helps build natural speaking rhythm and confidence.|4.20"
+  "shadowing-b2-042.wav|Fluency is not about perfection, but connection and rhythm.|3.80"
+  "shadowing-c1-088.wav|Articulating complex ideas clearly requires deliberate practice and thoughtful cadence.|5.10"
 )
 
 if [ "${MODE}" = "--spoken" ] && command -v say >/dev/null 2>&1 && command -v afconvert >/dev/null 2>&1; then
@@ -53,6 +58,19 @@ if [ "${MODE}" = "--spoken" ] && command -v say >/dev/null 2>&1 && command -v af
     echo "    Generated: ${FILENAME} (Spoken)"
   done
 
+  # Write provenance manifest
+  cat << 'EOF' > "${BACKEND_AUDIO_DIR}/audio-manifest.json"
+{
+  "mode": "LOCAL_SPOKEN",
+  "readiness": "LOCAL_SPOKEN",
+  "isSpokenSpeech": true,
+  "provenance": "Local macOS Samantha Speech Synthesis (Private Dev Only)",
+  "description": "Spoken English speech audio generated for private local development and verification. Not approved for public redistribution."
+}
+EOF
+  cp "${BACKEND_AUDIO_DIR}/audio-manifest.json" "${FRONTEND_AUDIO_DIR}/audio-manifest.json"
+  echo "    Manifest created: audio-manifest.json (LOCAL_SPOKEN)"
+
 else
   echo "--> Generating portable license-cleared synthetic PCM WAV assets..."
   echo "    Format: 1-channel, 16-bit signed PCM, 22050 Hz valid WAV header"
@@ -62,6 +80,7 @@ import os
 import wave
 import struct
 import math
+import json
 
 exercises = [
   ("dictation-a1-001.wav", 2.71),
@@ -69,6 +88,11 @@ exercises = [
   ("dictation-b1-015.wav", 3.76),
   ("dictation-b2-042.wav", 3.44),
   ("dictation-c1-088.wav", 5.33),
+  ("shadowing-a1-001.wav", 2.50),
+  ("shadowing-a2-002.wav", 3.10),
+  ("shadowing-b1-015.wav", 4.20),
+  ("shadowing-b2-042.wav", 3.80),
+  ("shadowing-c1-088.wav", 5.10),
 ]
 
 backend_dir = os.environ.get("BACKEND_AUDIO_DIR")
@@ -96,12 +120,24 @@ for filename, duration in exercises:
     with open(b_path, 'rb') as src, open(f_path, 'wb') as dst:
         dst.write(src.read())
 
-print("    Synthetic WAV assets verified successfully.")
+manifest = {
+    "mode": "SYNTHETIC_TEST_FIXTURE",
+    "readiness": "SYNTHETIC_FIXTURE",
+    "isSpokenSpeech": False,
+    "provenance": "Synthetic 440 Hz PCM Tone Generator (Transport & Decoder Verification Only)",
+    "description": "Synthetic sine wave audio fixture strictly for browser media transport, HTTP 206 range requests, and audio decoder tests. Does NOT contain spoken English speech."
+}
+with open(os.path.join(backend_dir, "audio-manifest.json"), "w") as mf:
+    json.dump(manifest, mf, indent=2)
+with open(os.path.join(frontend_dir, "audio-manifest.json"), "w") as mf:
+    json.dump(manifest, mf, indent=2)
+
+print("    Synthetic WAV assets and audio-manifest.json verified successfully.")
 EOF
 fi
 
 echo "=============================================================================="
-echo "Audio provisioning completed. All 5 curated WAV files ready in:"
+echo "Audio provisioning completed. All 10 curated WAV files ready in:"
 echo "  - ${BACKEND_AUDIO_DIR}"
 echo "  - ${FRONTEND_AUDIO_DIR}"
 echo "=============================================================================="

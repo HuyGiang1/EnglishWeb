@@ -24,6 +24,7 @@ public class LearningActivityEvent {
 
     public static final String EVENT_TYPE_FLASHCARD_REVIEW = "FLASHCARD_REVIEW";
     public static final String EVENT_TYPE_DICTATION_SENTENCE = "DICTATION_SENTENCE";
+    public static final String EVENT_TYPE_SHADOWING_TAKE = "SHADOWING_TAKE";
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

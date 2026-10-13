@@ -1,0 +1,7 @@
+{
+  "mode": "LOCAL_SPOKEN",
+  "readiness": "LOCAL_SPOKEN",
+  "isSpokenSpeech": true,
+  "provenance": "Local macOS Samantha Speech Synthesis (Private Dev Only)",
+  "description": "Spoken English speech audio generated for private local development and verification. Not approved for public redistribution."
+}

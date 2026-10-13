@@ -63,8 +63,8 @@ export const navStudyItems: NavItem[] = [
     title: "Shadowing",
     href: "/shadowing",
     icon: Mic,
-    badge: "M2",
-    isUpcoming: true,
+    badge: "Focus",
+    isUpcoming: false,
   },
   {
     title: "Quiz",

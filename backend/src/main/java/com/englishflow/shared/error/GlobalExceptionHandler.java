@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
-        if (msg.contains("uq_srs_review_attempt") || msg.contains("uq_activity_user_attempt")) {
+        if (msg.contains("uq_srs_review_attempt") || msg.contains("uq_activity_user_attempt") || msg.contains("uq_dictation_user_attempt") || msg.contains("uq_shadowing_user_attempt")) {
             ApiErrorResponse response = ApiErrorResponse.of(
                 "IDEMPOTENCY_CONFLICT",
                 "Attempt ID has already been processed with a concurrent submission.",
@@ -226,6 +226,46 @@ public class GlobalExceptionHandler {
         ApiErrorResponse response = ApiErrorResponse.of(
             ex.getCode() != null ? ex.getCode() : "BAD_REQUEST",
             ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.shadowing.exception.ShadowingExerciseNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleShadowingExerciseNotFound(com.englishflow.shadowing.exception.ShadowingExerciseNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.shadowing.exception.ShadowingConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleShadowingConflict(com.englishflow.shadowing.exception.ShadowingConflictException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "IDEMPOTENCY_CONFLICT",
+            ex.getMessage(),
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.shadowing.exception.ShadowingException.class)
+    public ResponseEntity<ApiErrorResponse> handleShadowingException(com.englishflow.shadowing.exception.ShadowingException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            ex.getCode() != null ? ex.getCode() : "VALIDATION_FAILED",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "VALIDATION_FAILED",
+            "The request payload is malformed, invalid, or contains unsupported non-finite numbers.",
             HttpStatus.BAD_REQUEST.value()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);

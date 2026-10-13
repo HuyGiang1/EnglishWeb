@@ -7,3 +7,4 @@ export * from "./dashboard";
 export * from "./collections";
 export * from "./import";
 export * from "./dictation";
+export * from "./shadowing";
