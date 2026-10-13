@@ -3,6 +3,7 @@ package com.englishflow.vocabulary.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 
 public record CreateVocabularyRequest(
     @NotBlank(message = "Term is required")
@@ -37,5 +38,23 @@ public record CreateVocabularyRequest(
         regexp = "^(A1|A2|B1|B2|C1|C2)$",
         message = "Difficulty level must be one of: A1, A2, B1, B2, C1, C2"
     )
-    String difficultyLevel
-) {}
+    String difficultyLevel,
+
+    UUID collectionId
+) {
+    public CreateVocabularyRequest(
+        String term,
+        String partOfSpeech,
+        String phoneticIpa,
+        String vietnameseMeaning,
+        String englishDefinition,
+        String exampleSentence,
+        String exampleTranslation,
+        String notes,
+        String source,
+        String difficultyLevel
+    ) {
+        this(term, partOfSpeech, phoneticIpa, vietnameseMeaning, englishDefinition,
+             exampleSentence, exampleTranslation, notes, source, difficultyLevel, null);
+    }
+}

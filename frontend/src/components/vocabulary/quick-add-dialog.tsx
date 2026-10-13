@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vocabularyApi, VocabularyItem } from "@/lib/api/vocabulary";
+import { collectionsApi, CollectionItem } from "@/lib/api/collections";
 import {
   vocabularySchema,
   type VocabularyFormData,
@@ -36,6 +37,8 @@ export function QuickAddDialog({
   const [duplicateWarning, setDuplicateWarning] = React.useState<string | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [collections, setCollections] = React.useState<CollectionItem[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = React.useState<string>("");
 
   const {
     register,
@@ -90,13 +93,19 @@ export function QuickAddDialog({
     return () => clearTimeout(timer);
   }, [watchedTerm, watchedPos]);
 
-  // Reset form when dialog opens/closes
+  // Reset form and fetch user collections when dialog opens/closes
   React.useEffect(() => {
     if (open) {
       setServerError(null);
       setDuplicateWarning(null);
+      setSelectedCollectionId("");
+      collectionsApi
+        .list({ size: 100 })
+        .then((res) => setCollections(res.content))
+        .catch(() => setCollections([]));
     } else {
       reset();
+      setSelectedCollectionId("");
     }
   }, [open, reset]);
 
@@ -123,9 +132,11 @@ export function QuickAddDialog({
         exampleTranslation: data.exampleTranslation?.trim() || null,
         notes: data.notes?.trim() || null,
         difficultyLevel: data.difficultyLevel || null,
+        collectionId: selectedCollectionId || null,
       });
 
       reset();
+      setSelectedCollectionId("");
       onOpenChange(false);
       if (onSuccess) {
         onSuccess(created);
@@ -285,6 +296,24 @@ export function QuickAddDialog({
                 <option value="C2">C2 — Proficiency</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-add-collection">Assign to Collection (Optional)</Label>
+            <select
+              id="quick-add-collection"
+              value={selectedCollectionId}
+              onChange={(e) => setSelectedCollectionId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isSubmitting}
+            >
+              <option value="">None (Library only)</option>
+              {collections.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.title} ({col.wordCount} {col.wordCount === 1 ? "word" : "words"})
+                </option>
+              ))}
+            </select>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-2">

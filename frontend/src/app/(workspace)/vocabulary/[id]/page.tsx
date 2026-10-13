@@ -14,6 +14,8 @@ import {
   Save,
   X,
   Sparkles,
+  Layers,
+  Plus,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
@@ -30,6 +32,11 @@ import {
 } from "@/components/ui/dialog";
 import { vocabularyApi, VocabularyItem } from "@/lib/api/vocabulary";
 import {
+  collectionsApi,
+  CollectionSummaryItem,
+  CollectionItem,
+} from "@/lib/api/collections";
+import {
   vocabularySchema,
   type VocabularyFormData,
 } from "@/lib/vocabulary/vocabulary-schema";
@@ -40,6 +47,13 @@ export default function VocabularyDetailPage() {
   const id = params?.id as string;
 
   const [vocabulary, setVocabulary] = React.useState<VocabularyItem | null>(null);
+  const [assignedCollections, setAssignedCollections] = React.useState<CollectionSummaryItem[]>([]);
+  const [allCollections, setAllCollections] = React.useState<CollectionItem[]>([]);
+  const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
+  const [selectedDeckToAssign, setSelectedDeckToAssign] = React.useState<string>("");
+  const [isAssigningDeck, setIsAssigningDeck] = React.useState(false);
+  const [assignError, setAssignError] = React.useState<string | null>(null);
+
   const [isLoading, setIsLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
@@ -62,8 +76,12 @@ export default function VocabularyDetailPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await vocabularyApi.getById(id);
+      const [data, cols] = await Promise.all([
+        vocabularyApi.getById(id),
+        collectionsApi.getCollectionsForVocabulary(id).catch(() => []),
+      ]);
       setVocabulary(data);
+      setAssignedCollections(cols);
       reset({
         term: data.term,
         partOfSpeech: data.partOfSpeech as VocabularyFormData["partOfSpeech"],
@@ -86,6 +104,34 @@ export default function VocabularyDetailPage() {
   React.useEffect(() => {
     fetchItem();
   }, [fetchItem]);
+
+  const handleOpenAssignModal = async () => {
+    setIsAssignModalOpen(true);
+    setSelectedDeckToAssign("");
+    setAssignError(null);
+    try {
+      const res = await collectionsApi.list({ size: 100 });
+      setAllCollections(res.content);
+    } catch {
+      setAssignError("Failed to load user collections.");
+    }
+  };
+
+  const handleAssignToDeck = async () => {
+    if (!selectedDeckToAssign || !vocabulary) return;
+    setIsAssigningDeck(true);
+    setAssignError(null);
+    try {
+      await collectionsApi.assignVocabularies(selectedDeckToAssign, [vocabulary.id]);
+      setIsAssignModalOpen(false);
+      const cols = await collectionsApi.getCollectionsForVocabulary(vocabulary.id);
+      setAssignedCollections(cols);
+    } catch (err: unknown) {
+      setAssignError(err instanceof Error ? err.message : "Failed to assign to deck");
+    } finally {
+      setIsAssigningDeck(false);
+    }
+  };
 
   const onSave = React.useCallback(
     async (data: VocabularyFormData) => {
@@ -355,10 +401,49 @@ export default function VocabularyDetailPage() {
                     <span>SRS Flashcard Status</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    State: <strong>NEW</strong> · Spaced repetition review queue active in upcoming M1 SRS release.
+                    State: <strong>NEW</strong> · Spaced repetition review queue active.
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Collection Memberships Card */}
+            <div className="rounded-lg border border-border bg-card p-6 space-y-4 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-1.5">
+                  <Layers className="h-4 w-4" />
+                  Collection Memberships
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 px-2.5"
+                  onClick={handleOpenAssignModal}
+                  id="assign-to-collection-btn"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Assign to Deck
+                </Button>
+              </div>
+
+              {assignedCollections.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {assignedCollections.map((col) => (
+                    <Link
+                      key={col.id}
+                      href={`/collections/${col.id}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-muted hover:border-foreground/50 transition-colors"
+                    >
+                      <Layers className="h-3 w-3" />
+                      <span>{col.title}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground pt-1">
+                  This word is not assigned to any custom collections. Assign it to thematic decks to review it in targeted sessions.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -522,6 +607,72 @@ export default function VocabularyDetailPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign to Deck Dialog */}
+      <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <div className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Assign to Collection</DialogTitle>
+              <DialogDescription>
+                Assign <span className="font-semibold text-foreground">&quot;{vocabulary?.term}&quot;</span> to a thematic study deck.
+              </DialogDescription>
+            </DialogHeader>
+
+            {assignError && (
+              <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+                {assignError}
+              </div>
+            )}
+
+            <div className="space-y-2 py-1">
+              <Label htmlFor="select-deck-to-assign">Choose Collection</Label>
+              <select
+                id="select-deck-to-assign"
+                value={selectedDeckToAssign}
+                onChange={(e) => setSelectedDeckToAssign(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">-- Select a collection --</option>
+                {allCollections.map((col) => {
+                  const alreadyIn = assignedCollections.some((c) => c.id === col.id);
+                  return (
+                    <option key={col.id} value={col.id} disabled={alreadyIn}>
+                      {col.title} {alreadyIn ? "(Already added)" : `(${col.wordCount} words)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAssignModalOpen(false)}
+                disabled={isAssigningDeck}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAssignToDeck}
+                disabled={isAssigningDeck || !selectedDeckToAssign}
+                id="confirm-assign-deck-btn"
+              >
+                {isAssigningDeck ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  "Assign to Deck"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

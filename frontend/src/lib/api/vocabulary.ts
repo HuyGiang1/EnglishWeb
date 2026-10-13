@@ -55,6 +55,7 @@ export interface CreateVocabularyPayload {
   notes?: string | null;
   source?: string | null;
   difficultyLevel?: string | null;
+  collectionId?: string | null;
 }
 
 export interface UpdateVocabularyPayload {

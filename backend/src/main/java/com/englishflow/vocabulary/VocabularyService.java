@@ -22,17 +22,31 @@ public class VocabularyService {
 
     private final VocabularyRepository vocabularyRepository;
     private final com.englishflow.review.ReviewService reviewService;
+    private final CollectionRepository collectionRepository;
+    private final VocabularyCollectionRepository vocabularyCollectionRepository;
 
     public VocabularyService(
         VocabularyRepository vocabularyRepository,
-        com.englishflow.review.ReviewService reviewService
+        com.englishflow.review.ReviewService reviewService,
+        CollectionRepository collectionRepository,
+        VocabularyCollectionRepository vocabularyCollectionRepository
     ) {
         this.vocabularyRepository = vocabularyRepository;
         this.reviewService = reviewService;
+        this.collectionRepository = collectionRepository;
+        this.vocabularyCollectionRepository = vocabularyCollectionRepository;
     }
 
     @Transactional
     public VocabularyResponse createVocabulary(UUID userId, CreateVocabularyRequest request) {
+        Collection targetCollection = null;
+        if (request.collectionId() != null) {
+            targetCollection = collectionRepository.findByIdAndUserId(request.collectionId(), userId)
+                .orElseThrow(() -> new com.englishflow.vocabulary.exception.CollectionNotFoundException(
+                    "Collection not found: " + request.collectionId()
+                ));
+        }
+
         String normalized = Vocabulary.normalize(request.term());
         String pos = request.partOfSpeech() != null ? request.partOfSpeech().toLowerCase(Locale.ROOT).trim() : null;
 
@@ -61,6 +75,15 @@ public class VocabularyService {
 
         Vocabulary saved = vocabularyRepository.save(vocabulary);
         reviewService.provisionCardForVocabulary(userId, saved.getId(), null);
+
+        if (targetCollection != null) {
+            vocabularyCollectionRepository.save(
+                new VocabularyCollection(userId, targetCollection.getId(), saved.getId(), java.time.Instant.now())
+            );
+            targetCollection.setUpdatedAt(java.time.Instant.now());
+            collectionRepository.save(targetCollection);
+        }
+
         return VocabularyResponse.fromEntity(saved);
     }
 

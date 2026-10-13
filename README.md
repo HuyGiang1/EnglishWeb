@@ -95,7 +95,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 > 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M1 — First Vertical Slice (**COMPLETED & STABILIZED**)
+* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T01 COMPLETED**)
 * **Completed Tasks**:
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
   * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
@@ -105,7 +105,8 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M1-T06: Spaced Repetition SRS Flashcard Review (Flyway V3, SM-2 Engine, Row-Locked Concurrency Idempotency, Activity Events)
   * M1-T07: Real Dashboard & Learning Progress Vertical Slice (Authoritative Read-Only Summary, Streak State Machine, Daily Goal Tracking)
   * M1-T08: Milestone M1 Stabilization, Regression Audit & Git Checkpoint (76 Backend Tests, 45 Frontend Tests, 16-Step Full-Stack E2E Audit)
-* **Next Target**: Milestone M2 — Target MVP Expansion (Vocabulary Collections, CSV/TSV Bulk Import, Daily Dictation)
+  * M2-T01: Vocabulary Collections & Deck Management (Flyway V4, Many-to-Many Composite Tenant FKs, Non-Destructive Deletion, Real Collection Library & Detail Screens, Quick Add Deck Assignment, 96 Backend Tests, 55 Frontend Tests, 14-Step Full-Stack E2E Verification)
+* **Next Target**: Task M2-T02: CSV/TSV Bulk Vocabulary Import
 
 ---
 

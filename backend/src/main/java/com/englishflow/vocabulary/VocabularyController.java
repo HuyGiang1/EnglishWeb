@@ -29,14 +29,20 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/vocabulary")
+@RequestMapping({"/api/v1/vocabulary", "/api/v1/vocabularies"})
 public class VocabularyController {
 
     private final VocabularyService vocabularyService;
+    private final CollectionService collectionService;
     private final UserRepository userRepository;
 
-    public VocabularyController(VocabularyService vocabularyService, UserRepository userRepository) {
+    public VocabularyController(
+        VocabularyService vocabularyService,
+        CollectionService collectionService,
+        UserRepository userRepository
+    ) {
         this.vocabularyService = vocabularyService;
+        this.collectionService = collectionService;
         this.userRepository = userRepository;
     }
 
@@ -142,5 +148,16 @@ public class VocabularyController {
     ) {
         UUID userId = getAuthenticatedUserId(authentication);
         vocabularyService.deleteVocabulary(userId, id);
+    }
+
+    @GetMapping("/{id}/collections")
+    public ResponseEntity<java.util.List<com.englishflow.vocabulary.dto.CollectionSummaryDto>> getCollectionsForVocabulary(
+        @PathVariable UUID id,
+        Authentication authentication
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+        java.util.List<com.englishflow.vocabulary.dto.CollectionSummaryDto> collections =
+            collectionService.getCollectionsForVocabulary(userId, id);
+        return ResponseEntity.ok(collections);
     }
 }

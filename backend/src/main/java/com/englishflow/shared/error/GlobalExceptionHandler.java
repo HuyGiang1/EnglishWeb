@@ -94,9 +94,47 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
+        if (msg.contains("uq_collection_user_title") || msg.contains("uq_collection_user_lower_title")) {
+            ApiErrorResponse response = ApiErrorResponse.of(
+                "TITLE_ALREADY_EXISTS",
+                "A collection with this title already exists.",
+                HttpStatus.CONFLICT.value()
+            );
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        }
+
+        if (msg.contains("fk_vocab_col_collection") || msg.contains("fk_vocab_col_vocabulary")) {
+            ApiErrorResponse response = ApiErrorResponse.of(
+                "CROSS_USER_INTEGRITY_VIOLATION",
+                "Cannot associate items belonging to different users.",
+                HttpStatus.FORBIDDEN.value()
+            );
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
+
         ApiErrorResponse response = ApiErrorResponse.of(
             "CONFLICT",
             "A database integrity conflict occurred.",
+            HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.vocabulary.exception.CollectionNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCollectionNotFound(com.englishflow.vocabulary.exception.CollectionNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.vocabulary.exception.DuplicateCollectionTitleException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateCollectionTitle(com.englishflow.vocabulary.exception.DuplicateCollectionTitleException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "TITLE_ALREADY_EXISTS",
+            ex.getMessage(),
             HttpStatus.CONFLICT.value()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
