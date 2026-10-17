@@ -20,6 +20,7 @@
 6. **Monochrome Activity Heatmap**: GitHub-style 365-day study consistency matrix aggregated strictly against user local calendar timezones.
 7. **Vocabulary Collections & Decks**: Organize vocabulary into structured decks and thematic categories with non-destructive deletion guarantees.
 8. **Bulk Vocabulary Import**: Ingest CSV/TSV spreadsheets with UTF-8/BOM support, Vietnamese diacritics, dry-run preview, duplicate handling policies, and zero-activity SRS provisioning.
+9. **Learner Profile & Settings**: Full account control, profile customization (`display_name`), daily learning goals (`daily_goal_items` 1–500), IANA timezone configuration, preferred audio playback speed (`0.75x`, `1.0x`, `1.25x`), secure BCrypt password change with session ID rotation, and password-protected cascading account erasure.
 
 ---
 
@@ -97,7 +98,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 > 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T04 COMPLETED**)
+* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T07 COMPLETED**)
 * **Completed Tasks**:
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
   * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
@@ -111,7 +112,10 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M2-T02: CSV / TSV Bulk Vocabulary Import (RFC 4180 Streaming Parser, UTF-8/BOM & Vietnamese Diacritics Support, Dry-Run Deduplication Preview, SKIP/REJECT Policies, PostgreSQL Transaction Advisory Locking, 135 Backend Tests, 69 Frontend Tests, 17-Step Full-Stack E2E Verification)
   * M2-T03: Daily Dictation Full-Stack Vertical Slice (Flyway V6/V7, Curated Audio Assets with Static Audio Serving `/api/v1/media/audio/**`, `TranscriptNormalizer`, `DictationDiffEngine` with Needleman-Wunsch & Levenshtein Token Alignment, Transaction Advisory Locks for Idempotency, Guaranteed Single `DICTATION_SENTENCE` Activity Logging, Focus Daily Dictation UI `/dictation`, 179 Backend Tests, 80 Frontend Tests, 18-Step Full-Stack E2E Verification)
   * M2-T04: Speech Shadowing Full-Stack Vertical Slice & Reliability Audit (Flyway V8, 5 Curated CEFR Shadowing Assets, `audio-manifest.json` audio readiness metadata distinguishing genuine spoken audio from synthetic test tone fixtures, `MediaRecorder` browser voice capture with safe lifecycle/cleanup and unmount track termination, 4-tier honest self-assessment reflection without fake AI scores, server-side bounded duration validation, PostgreSQL transaction advisory lock idempotency across Matrix A–G, atomic `SHADOWING_TAKE` activity logging, Focus Shadowing UI `/shadowing`, 204 Backend Tests, 98 Frontend Tests, 16-Step Full-Stack E2E Verification)
-* **Next Target**: Task M2-T05: Diagnostic Quiz Engine Vertical Slice
+  * M2-T05: Diagnostic Quiz Engine Vertical Slice (Flyway V9, Question Bank, Randomized Quiz Sets, Submission Idempotency, Activity Logging, 229 Backend Tests, 104 Frontend Tests, 15-Step Full-Stack E2E Verification)
+  * M2-T06: 52-Week Learning Activity Heatmap Full-Stack Vertical Slice (Canonical `/api/v1/analytics/activity-heatmap`, 365-Day Sunday-Aligned Geometry, Multi-Modality Aggregation, Strict Timezone-Aware Bucketing, 244 Backend Tests, 112 Frontend Tests, 12-Step Full-Stack E2E Verification)
+  * M2-T07: Learner Profile & Settings Full-Stack Vertical Slice & Security Audit (Flyway V10, `preferred_audio_speed` [0.75x, 1.0x, 1.25x], IANA Timezone Configuration, Daily Study Goal [1..500], BCrypt Password Change with Session Rotation & Policy A, Password-Protected Cascading Account Erasure with Transaction Isolation, Dictation/Shadowing Audio Player Speed Binding, 278 Backend Tests, 122 Frontend Tests, 50-Assertion Full-Stack E2E Verification)
+* **Next Target**: Task M2-T08: Milestone M2 Final Stabilization, Regression Audit & Git Checkpoint
 
 ---
 

@@ -8,3 +8,4 @@ export * from "./collections";
 export * from "./import";
 export * from "./dictation";
 export * from "./shadowing";
+export * from "./settings";

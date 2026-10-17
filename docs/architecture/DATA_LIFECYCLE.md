@@ -19,7 +19,7 @@ Data in EnglishFlow moves through distinct operational states across learning mo
 
 ---
 
-### 2.1 User Lifecycle: Registration to Account Deletion
+### 2.1 User Lifecycle: Registration, Password Change & Account Deletion
 
 ```
 [ Unregistered ] ──> [ Register / Validated ] ──> [ Active Learner ] ──> [ Deactivated / Erased ]
@@ -27,25 +27,46 @@ Data in EnglishFlow moves through distinct operational states across learning mo
 
 1. **Registration**:
    * User registers with valid email and password.
-   * `app_users` record created with `timezone` set to client's detected IANA timezone (default `UTC`), `daily_goal_items = 20`, and `is_active = TRUE`.
+   * `app_users` record created with `timezone` set to client's detected IANA timezone (default `UTC`), `daily_goal_items = 20`, `preferred_audio_speed = 1.0`, and `is_active = TRUE`.
    * Passwords hashed via BCrypt (work factor 12).
 2. **Profile Updates**:
-   * Changing `timezone` or `daily_goal_items` updates `updated_at`.
-   * **Timezone Invariant**: Updating `timezone` **never** retroactively alters past dates in `learning_activity_events`. Historical local activity dates remain permanently fixed.
-3. **Account Deletion (Complete Data Erasure Policy)**:
-   * **Hard Delete Strategy for Account Closure**: Initiating account deletion executes:
+   * Changing `timezone`, `daily_goal_items`, or `preferred_audio_speed` updates `updated_at`.
+   * **Timezone Invariant**: Updating `timezone` **never** retroactively alters past dates in `learning_activity_events`. Historical local activity dates (`historical_local_date`) remain permanently fixed.
+3. **Password Change & Multi-Session Policy (Policy A)**:
+   * Verification enforces current password match via `PasswordEncoder`, registration complexity rules, confirmation match, and disallows new password identical to current.
+   * Upon successful password update within `@Transactional`, the application rotates the caller's session ID (`HttpServletRequest.changeSessionId()`) to mitigate session fixation attacks.
+   * **Multi-Session Policy (Policy A)**: Under standard Spring Security servlet session management, concurrent sessions active on other devices/browsers remain valid until expiration or explicit logout. Multi-device session revocation requires centralized session registry infrastructure (e.g., Spring Session Redis) deferred to future enterprise milestones.
+4. **Account Deletion Transaction Boundary & Session Invalidation**:
+   * **Boundary Isolation**: Database hard deletion and HTTP servlet session invalidation are strictly decoupled across transaction boundaries.
+   * Database deletion executes inside an isolated `@Transactional` service boundary:
      ```sql
      DELETE FROM app_users WHERE id = :userId;
      ```
-   * **Atomic Cascade Execution**: PostgreSQL foreign keys with `ON DELETE CASCADE` automatically and atomically delete:
-     * `vocabularies` (and their `vocabulary_collections` join rows)
-     * `collections`
-     * `srs_items` and `srs_review_history`
-     * `dictation_attempts`
-     * `shadowing_takes`
-     * `quiz_attempts` and `quiz_answers`
-     * `learning_activity_events`
-   * **Media Storage Cleanup**: Spring Boot triggers asynchronous deletion of any uploaded audio recordings stored under `/data/audio/{userId}/` via `AudioStorageService.deleteAudio()`.
+   * **Post-Commit Invalidation**: The caller's HTTP session (`session.invalidate()`), Spring Security context (`SecurityContextHolder.clearContext()`), and `JSESSIONID` cookie (`maxAge = 0`) are cleared **strictly after** the database transaction commits successfully.
+   * **Rollback Safety**: If any database constraint violation or unexpected exception aborts the deletion transaction, the session and credentials remain completely valid, preventing users from entering a broken or misleading half-deleted state.
+5. **Relational Erasure Matrix (PostgreSQL Referential Integrity)**:
+   * Foreign keys with `ON DELETE CASCADE` guarantee complete, atomic erasure of all user-owned data from the active operational database:
+     * `vocabularies` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `collections` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `vocabulary_collections` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `srs_items` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `srs_review_history` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `dictation_attempts` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `shadowing_takes` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `quiz_attempts` (`user_id -> app_users(id) ON DELETE CASCADE`)
+     * `quiz_answers` (`quiz_attempt_id -> quiz_attempts(id) ON DELETE CASCADE`)
+     * `learning_activity_events` (`user_id -> app_users(id) ON DELETE CASCADE`)
+   * **Shared Reference Content Strict Preservation**:
+     * `learning_contents` (shared dictation/shadowing content bank) has no foreign key to `app_users` and is 100% preserved.
+     * `quiz_questions` (`content_id -> learning_contents(id) ON DELETE CASCADE`) is independent of users and is 100% preserved.
+6. **Privacy, Erasure & GDPR Retention Scope Clarification**:
+   * **In-Scope**: Immediate atomic hard deletion of all personal data, vocabulary records, study history, and attempts from the live PostgreSQL relational database.
+   * **Media Storage Cleanup**: Asynchronous removal of optional recorded audio files under `/data/audio/{userId}/`.
+   * **Out-of-Scope / Practical Retention Limitations**:
+     * *Database Backups & WAL*: Point-in-time recovery archives and database backups retain data until standard backup retention expiration.
+     * *Application & Server Access Logs*: Sanitized web server logs (containing timestamp and route without credentials) persist according to log rotation policies.
+     * *External Proxies / CDNs*: Third-party edge/reverse proxies retain access logs per external infrastructure configurations.
+   * *Compliance Statement*: Application database account erasure satisfies core "Right to Erasure" requirements within the operational data store; full enterprise GDPR compliance requires organizational backup aging and data processing agreements.
 
 ---
 

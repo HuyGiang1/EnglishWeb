@@ -40,6 +40,9 @@ public class User {
     @Column(name = "daily_goal_items", nullable = false)
     private int dailyGoalItems = 20;
 
+    @Column(name = "preferred_audio_speed", nullable = false)
+    private Double preferredAudioSpeed = 1.0;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
@@ -53,11 +56,16 @@ public class User {
     }
 
     public User(String email, String passwordHash, String displayName, String timezone, int dailyGoalItems) {
+        this(email, passwordHash, displayName, timezone, dailyGoalItems, 1.0);
+    }
+
+    public User(String email, String passwordHash, String displayName, String timezone, int dailyGoalItems, Double preferredAudioSpeed) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
         this.timezone = (timezone != null && !timezone.isBlank()) ? timezone : "UTC";
         this.dailyGoalItems = dailyGoalItems > 0 ? dailyGoalItems : 20;
+        this.preferredAudioSpeed = (preferredAudioSpeed != null) ? preferredAudioSpeed : 1.0;
         this.isActive = true;
     }
 
@@ -125,6 +133,14 @@ public class User {
 
     public void setDailyGoalItems(int dailyGoalItems) {
         this.dailyGoalItems = dailyGoalItems;
+    }
+
+    public Double getPreferredAudioSpeed() {
+        return preferredAudioSpeed;
+    }
+
+    public void setPreferredAudioSpeed(Double preferredAudioSpeed) {
+        this.preferredAudioSpeed = preferredAudioSpeed;
     }
 
     public boolean isActive() {

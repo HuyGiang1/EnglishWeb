@@ -26,6 +26,7 @@ import {
   ShadowingCompleteResponse,
   SelfRating,
 } from "@/lib/api/shadowing";
+import { settingsApi } from "@/lib/api/settings";
 import { ApiError } from "@/lib/api/client";
 
 type PageMode = "DIRECTORY" | "PRACTICE";
@@ -97,6 +98,14 @@ export default function ShadowingPage() {
       const supported = !!(navigator.mediaDevices && window.MediaRecorder);
       setMediaRecorderSupported(supported);
     }
+    // Load preferred audio speed
+    settingsApi.getSettings().then((s) => {
+      if (s?.preferredAudioSpeed) {
+        setPlaybackSpeed(s.preferredAudioSpeed);
+      }
+    }).catch(() => {
+      // Graceful fallback
+    });
   }, [loadExercises]);
 
   // Teardown tracks & revoked URLs on unmount

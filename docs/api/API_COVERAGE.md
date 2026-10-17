@@ -81,9 +81,13 @@ To support rigorous agile delivery and avoid premature feature bloat, endpoint i
 | **11** | **Quiz Engine** | MVP | Submit answer for question | `POST` | `/api/v1/quizzes/attempts/{id}/answers` | `SubmitQuizAnswerRequest` | `200 OK` | Idempotent on question; locks after single answer |
 | **11** | **Quiz Engine** | MVP | Finalize and grade quiz | `POST` | `/api/v1/quizzes/attempts/{id}/complete` | None | `200 OK` | Idempotent completion; emits activity event once |
 | **12** | **Learning History**| V1 | Browse chronological audit | `GET` | `/api/v1/history` (V1 Scope) | `from_date, to_date, modality` | `200 OK` | *Deferred to Milestone 3 (V1 Enhancement)* |
-| **13** | **Settings** | MVP | Fetch current user config | `GET` | `/api/v1/settings` | None | `200 OK` | Returns display name, IANA timezone, daily goal |
+| **13** | **Settings** | MVP | Fetch current user config | `GET` | `/api/v1/settings` | None | `200 OK` | Returns display name, email, IANA timezone, daily goal, audio speed |
+| **13** | **Settings** | MVP | Unified settings update | `PUT` | `/api/v1/settings` | `UpdateSettingsRequest` | `200 OK` | Updates supported settings fields atomically |
 | **13** | **Settings** | MVP | Update profile name | `PUT` | `/api/v1/settings/profile` | `UpdateProfileRequest` | `200 OK` | Updates `display_name` |
-| **13** | **Settings** | MVP | Update timezone & goal | `PUT` | `/api/v1/settings/preferences` | `UpdatePreferencesRequest` | `200 OK` | Validates IANA timezone; recalculates daily goal |
+| **13** | **Settings** | MVP | Update timezone, goal, audio speed | `PUT` | `/api/v1/settings/preferences` | `UpdatePreferencesRequest` | `200 OK` | Validates IANA timezone, goal bounds, and audio speed |
+| **13** | **Settings** | MVP | Secure password change | `PUT` | `/api/v1/settings/password` | `ChangePasswordRequest` | `200 OK` | Verifies current password, updates BCrypt hash, rotates session |
+| **13** | **Settings** | MVP | Secure password change alias | `POST` | `/api/v1/settings/change-password` | `ChangePasswordRequest` | `200 OK` | POST alias for password change |
+| **13** | **Settings** | MVP | Permanent account erasure | `DELETE` | `/api/v1/settings/account` | `DeleteAccountRequest` | `200 OK` | Verifies password, cascades user data erasure, invalidates session |
 
 ---
 
@@ -205,10 +209,21 @@ To support rigorous agile delivery and avoid premature feature bloat, endpoint i
 
 #### Screen 13: User Settings (`/settings`)
 - **UI Interaction**:
-  - User updates display name, IANA timezone selector (searchable combo box), and daily goal target.
+  - Organized into 4 structured tabs:
+    - **Profile**: Edit display name (length: 2..100, live character count), view read-only canonical email ID.
+    - **Learning Preferences**: Configure daily review target (1..500 with presets 10, 20, 30, 50), searchable IANA timezone dropdown with live preview, preferred audio playback speed chips (0.75x, 1.0x, 1.25x).
+    - **Security**: Current password validation, new password with policy checklist (8+ chars, digit, symbol), confirm password matching, clear success status.
+    - **Account Management**: View registration metadata, Danger Zone with permanent account erasure dialog requiring current password authorization.
 - **Backend Flow**:
-  - `PUT /api/v1/settings/preferences` validates timezone against Java `ZoneId.getAvailableZoneIds()`.
-  - Persisted timezone immediately takes effect on next dashboard and streak recalculation.
+  - `GET /api/v1/settings` returns authenticated user profile & preferences.
+  - `PUT /api/v1/settings` supports unified canonical update per `API_CONTRACT.md` Section 10.
+  - `PUT /api/v1/settings/profile` validates display name and persists update.
+  - `PUT /api/v1/settings/preferences` validates timezone against Java `ZoneId.of()`, daily goal bounds (1..500), and audio speed (0.75, 1.0, 1.25).
+  - `PUT /api/v1/settings/password` and `POST /api/v1/settings/change-password` verify active password, hash new password with BCrypt (factor 12), and rotate session ID.
+  - `DELETE /api/v1/settings/account` verifies active password, executes atomic cascade hard delete via PostgreSQL foreign keys, invalidates session, and clears `JSESSIONID` cookie.
+  - Dictation and Speech Shadowing focus modules initialize default player playback rates from `settings.preferredAudioSpeed`.
+  - All mutating endpoints require synchronized CSRF protection (`X-XSRF-TOKEN`).
+  - Historical local dates in `learning_activity_events` remain permanently immutable when timezone is changed.
 
 ---
 

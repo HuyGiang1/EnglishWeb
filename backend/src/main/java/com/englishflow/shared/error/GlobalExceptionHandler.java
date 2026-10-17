@@ -291,6 +291,46 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.user.exception.InvalidSettingsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidSettings(com.englishflow.user.exception.InvalidSettingsException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "VALIDATION_FAILED",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.user.exception.InvalidCurrentPasswordException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCurrentPassword(com.englishflow.user.exception.InvalidCurrentPasswordException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "INVALID_CURRENT_PASSWORD",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(com.englishflow.user.exception.UserNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserNotFound(com.englishflow.user.exception.UserNotFoundException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "USER_NOT_FOUND",
+            ex.getMessage(),
+            HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+            "VALIDATION_FAILED",
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
         ApiErrorResponse response = ApiErrorResponse.of(

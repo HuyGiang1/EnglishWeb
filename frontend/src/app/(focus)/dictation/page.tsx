@@ -22,6 +22,7 @@ import {
   type DictationSubmitResponse,
   type DiffToken,
 } from "@/lib/api/dictation";
+import { settingsApi } from "@/lib/api/settings";
 
 interface CompletedRecord {
   title: string;
@@ -75,6 +76,13 @@ export default function DictationPage() {
 
   useEffect(() => {
     loadExercises();
+    settingsApi.getSettings().then((s) => {
+      if (s?.preferredAudioSpeed) {
+        setPlaybackRate(s.preferredAudioSpeed);
+      }
+    }).catch(() => {
+      // Graceful fallback to default 1.0
+    });
   }, [loadExercises]);
 
   // Start a specific exercise
