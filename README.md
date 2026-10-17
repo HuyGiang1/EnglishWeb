@@ -98,7 +98,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 
 > 🚀 **MILESTONE M1 VERTICAL SLICE COMPLETE**: Full-stack session authentication, vocabulary library, spaced repetition flashcard review, authoritative learning dashboard, timezone/DST streak engine, and security stabilization verified on macOS Apple Silicon.
 
-* **Current Stage**: Milestone M2 — Target MVP Expansion (**IN PROGRESS — M2-T07 COMPLETED**)
+* **Current Stage**: Milestone M2 — Target MVP Expansion (**COMPLETED — M2-T08 RELEASE CANDIDATE AUDIT ACCEPTED**)
 * **Completed Tasks**:
   * M1-T01: PostgreSQL Infrastructure Scaffolding on macOS (Docker Compose, Healthchecks, Volume Persistence)
   * M1-T02: Spring Boot Backend Scaffolding (Java 21 LTS, Spring Boot 3.4.7, Modular Monolith)
@@ -115,7 +115,8 @@ The repository maintains an exhaustive set of blueprints serving as the single s
   * M2-T05: Diagnostic Quiz Engine Vertical Slice (Flyway V9, Question Bank, Randomized Quiz Sets, Submission Idempotency, Activity Logging, 229 Backend Tests, 104 Frontend Tests, 15-Step Full-Stack E2E Verification)
   * M2-T06: 52-Week Learning Activity Heatmap Full-Stack Vertical Slice (Canonical `/api/v1/analytics/activity-heatmap`, 365-Day Sunday-Aligned Geometry, Multi-Modality Aggregation, Strict Timezone-Aware Bucketing, 244 Backend Tests, 112 Frontend Tests, 12-Step Full-Stack E2E Verification)
   * M2-T07: Learner Profile & Settings Full-Stack Vertical Slice & Security Audit (Flyway V10, `preferred_audio_speed` [0.75x, 1.0x, 1.25x], IANA Timezone Configuration, Daily Study Goal [1..500], BCrypt Password Change with Session Rotation & Policy A, Password-Protected Cascading Account Erasure with Transaction Isolation, Dictation/Shadowing Audio Player Speed Binding, 278 Backend Tests, 122 Frontend Tests, 50-Assertion Full-Stack E2E Verification)
-* **Next Target**: Task M2-T08: Milestone M2 Final Stabilization, Regression Audit & Git Checkpoint
+  * M2-T08: Final Stabilization & Release Candidate Audit (Flyway V1–V10 Fresh Migration Verification, Complete 10-Table Cascading Erasure Verification, Frozen Historical Local Date Invariance, 20-Step Master User Journey [55/55 Assertions Passed], Empirical Sub-Millisecond Database Benchmarks, Audio Licensing Deployment Gate, Internal Release Candidate Validated)
+* **Next Target**: Milestone M2 Checkpoint Finalization & M3 Planning Handoff
 
 ---
 
