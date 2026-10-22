@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import com.englishflow.content.audio.AudioManifestService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,6 +50,7 @@ public class ShadowingService {
     private final EntityManager entityManager;
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
+    private final AudioManifestService audioManifestService;
 
     public ShadowingService(
         ShadowingTakeRepository shadowingTakeRepository,
@@ -58,7 +60,8 @@ public class ShadowingService {
         Clock clock,
         EntityManager entityManager,
         ResourceLoader resourceLoader,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        AudioManifestService audioManifestService
     ) {
         this.shadowingTakeRepository = shadowingTakeRepository;
         this.learningContentRepository = learningContentRepository;
@@ -68,13 +71,18 @@ public class ShadowingService {
         this.entityManager = entityManager;
         this.resourceLoader = resourceLoader;
         this.objectMapper = objectMapper;
+        this.audioManifestService = audioManifestService;
     }
 
     /**
-     * Determines whether the reference audio file actually exists on classpath or filesystem.
+     * Determines whether the reference audio file actually exists and is available.
      */
     public boolean isAudioAvailable(String storageKey) {
-        return !"MISSING".equals(getAudioReadiness(storageKey));
+        return isAudioAvailable(storageKey, null);
+    }
+
+    public boolean isAudioAvailable(String storageKey, String canonicalTranscript) {
+        return audioManifestService.isAudioAvailable(storageKey, canonicalTranscript);
     }
 
     /**
@@ -82,104 +90,14 @@ public class ShadowingService {
      * using the provenance manifest and local file verification.
      */
     public String getAudioReadiness(String storageKey) {
-        if (storageKey == null || storageKey.isBlank()) {
-            return "MISSING";
-        }
-
-        String filename = storageKey;
-        int lastSlash = filename.lastIndexOf('/');
-        if (lastSlash >= 0) {
-            filename = filename.substring(lastSlash + 1);
-        }
-
-        boolean fileExists = false;
-
-        // 1. Check classpath static media location
-        try {
-            Resource res = resourceLoader.getResource("classpath:static/media/audio/curated/" + filename);
-            if (res.exists() && res.contentLength() > 0) {
-                fileExists = true;
-            }
-        } catch (Exception ignored) {
-        }
-
-        // 2. Check local workspace paths (frontend/public or backend static resources)
-        if (!fileExists) {
-            String[] probePaths = {
-                "backend/src/main/resources/static/media/audio/curated/" + filename,
-                "frontend/public/media/audio/curated/" + filename,
-                "../backend/src/main/resources/static/media/audio/curated/" + filename,
-                "../frontend/public/media/audio/curated/" + filename
-            };
-
-            for (String probe : probePaths) {
-                File f = new File(probe);
-                if (f.exists() && f.length() > 0) {
-                    fileExists = true;
-                    break;
-                }
-            }
-        }
-
-        if (!fileExists) {
-            return "MISSING";
-        }
-
-        // Inspect manifest for provenance
-        String manifestMode = readManifestMode();
-        if ("SYNTHETIC_TEST_FIXTURE".equalsIgnoreCase(manifestMode)) {
-            return "SYNTHETIC_FIXTURE";
-        } else if ("LICENSED_DISTRIBUTABLE".equalsIgnoreCase(manifestMode)) {
-            return "LICENSED_DISTRIBUTABLE";
-        } else {
-            return "LOCAL_SPOKEN";
-        }
+        return audioManifestService.getAudioReadiness(storageKey).name();
     }
 
     /**
      * Returns true only if the audio asset actually contains intelligible spoken English speech.
      */
     public boolean isSpokenSpeech(String storageKey) {
-        String readiness = getAudioReadiness(storageKey);
-        return "LOCAL_SPOKEN".equals(readiness) || "LICENSED_DISTRIBUTABLE".equals(readiness);
-    }
-
-    private String readManifestMode() {
-        // Try classpath manifest
-        try {
-            Resource res = resourceLoader.getResource("classpath:static/media/audio/curated/audio-manifest.json");
-            if (res.exists()) {
-                try (InputStream is = res.getInputStream()) {
-                    JsonNode node = objectMapper.readTree(is);
-                    if (node.hasNonNull("mode")) {
-                        return node.get("mode").asText();
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        // Try local file probes
-        String[] probePaths = {
-            "backend/src/main/resources/static/media/audio/curated/audio-manifest.json",
-            "frontend/public/media/audio/curated/audio-manifest.json",
-            "../backend/src/main/resources/static/media/audio/curated/audio-manifest.json",
-            "../frontend/public/media/audio/curated/audio-manifest.json"
-        };
-        for (String probe : probePaths) {
-            File f = new File(probe);
-            if (f.exists() && f.length() > 0) {
-                try {
-                    JsonNode node = objectMapper.readTree(f);
-                    if (node.hasNonNull("mode")) {
-                        return node.get("mode").asText();
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-        }
-
-        return "LOCAL_SPOKEN";
+        return audioManifestService.isSpokenSpeech(storageKey);
     }
 
     /**
@@ -202,7 +120,7 @@ public class ShadowingService {
             Optional<ShadowingTake> latestTake = shadowingTakeRepository.findFirstByUserIdAndContentIdOrderByCompletedAtDesc(userId, content.getId());
             String lastSelfRating = latestTake.map(ShadowingTake::getSelfRating).orElse(null);
             String readiness = getAudioReadiness(content.getAudioStorageKey());
-            boolean audioAvailable = !"MISSING".equals(readiness);
+            boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
             boolean spoken = isSpokenSpeech(content.getAudioStorageKey());
 
             result.add(new ShadowingExerciseSummaryResponse(
@@ -231,7 +149,7 @@ public class ShadowingService {
             .orElseThrow(() -> new ShadowingExerciseNotFoundException("Shadowing exercise not found with id: " + contentId));
 
         String readiness = getAudioReadiness(content.getAudioStorageKey());
-        boolean audioAvailable = !"MISSING".equals(readiness);
+        boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
         boolean spoken = isSpokenSpeech(content.getAudioStorageKey());
 
         return new ShadowingExerciseDetailResponse(
@@ -316,9 +234,8 @@ public class ShadowingService {
         LearningContent content = learningContentRepository.findByIdAndContentTypeAndIsPublishedTrue(contentId, "SHADOWING")
             .orElseThrow(() -> new ShadowingExerciseNotFoundException("Shadowing exercise not found with id: " + contentId));
 
-        String readiness = getAudioReadiness(content.getAudioStorageKey());
-        if ("MISSING".equals(readiness)) {
-            throw new ShadowingException("AUDIO_UNAVAILABLE", "Cannot complete shadowing practice because reference audio is missing");
+        if (!isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText())) {
+            throw new ShadowingException("AUDIO_UNAVAILABLE", "Cannot complete shadowing practice because reference audio is missing or unapproved in this environment");
         }
 
         Instant nowUtc = Instant.now(clock);

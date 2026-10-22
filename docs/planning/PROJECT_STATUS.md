@@ -81,15 +81,19 @@ The following unresolved architecture risks and implementation follow-up items a
  
 ---
  
-## 4. Next Milestone Roadmap: Milestone M2 (Target MVP Expansion)
+## 4. Milestone M3: Production Readiness & Operations Execution History
 
-With Milestone M1 fully stabilized and verified end-to-end (all 8 tasks completed), Milestone M2 delivers target MVP features:
+| Task ID | Task Description | Technical Lead Decision | Primary Artifacts Produced / Revised |
+| :--- | :--- | :--- | :--- |
+| **M3-T00** | Production Audio Licensing & Architecture Decision Gate | CONDITIONALLY APPROVED | `docs/licensing/LOCAL_DEV_RESTRICTIONS.md`, ADR-012 proposal. Candidate provider evaluation (AWS Polly Neural preferred candidate, NOT yet authorized paid provider). Mandated offline validation and decoupled licensing/QA gates. |
+| **M3-T01A** | Production Audio Safety, Provenance & Offline Ingestion Pipeline | **COMPLETED & AUDITED** | Manifest v2.0.0 (`audio-manifest.json` with 16 auditable attributes); canonical catalog `content/canonical-curated-catalog.json`; offline tools `scripts/ingest-audio.py`, `scripts/validate-audio-manifest.py`, and `scripts/verify-transcript-integrity.py`; unit tests `scripts/tests/test_audio_pipeline.py` (10/10 passed); Spring Boot safety infrastructure (`AudioManifestService`, `AudioMediaSecurityInterceptor`, `AudioProductionReadinessGuard`); Spring profile fail-closed activation (`application-prod.yml`, `application-production.yml`); Maven build exclusion in `pom.xml` and Next.js bundle inspection proving 0 audio binaries in deployable packages; MockMvc & Testcontainers tests `ProductionAudioSafetyIntegrationTest.java` (21/21 passed proving invariants A through J); closure of static bypass routes (`spring.web.resources.add-mappings: false`, Next.js Edge Middleware blocking `/media/*`); full 16-scenario HTTP E2E verification on port 3000 (16/16 passed). Zero external cloud dependencies, zero paid assets generated. All 299 backend tests and 122 frontend tests passing. Local pipeline and production-like environment verified; actual cloud production deployment, commercial rights acquisition, and physical ear QA remain pending; ADR-012 remains PROPOSED. |
 
-* **Task M2-T01: Vocabulary Collections & Tagging**: Organize vocabulary into structured decks and thematic categories with many-to-many relationship management.
-* **Task M2-T02: CSV / TSV Bulk Vocabulary Import**: Scalable batch vocabulary ingestion with deduplication advisories and transactional safety.
-* **Task M2-T03: Daily Dictation Vertical Slice**: Audio playback engine, real-time user transcription, Levenshtein difference comparison, accuracy calculation, and activity event integration.
-* **Task M2-T04: Speech Shadowing Vertical Slice**: Dual native/learner audio waveform visualization, microphone recording comparison, and pronunciation self-assessment.
-* **Task M2-T05: Diagnostic Vocabulary Quizzes**: Multiple-choice and fill-in-the-blank assessment sessions with randomized question generation and score calculation.
-* **Task M2-T06: 52-Week GitHub-Style Activity Heatmap**: Interactive 365-day SVG consistency grid with dynamic grayscale intensity mapping and multi-year navigation.
-* **Task M2-T07: Learner Profile & Settings**: Configurable study daily targets, audio playback speed preferences, IANA timezone selector, and account data export/erasure.
+---
+
+## 5. Next Milestone Tasks (Milestone M3)
+
+* **Task M3-T01B: Content Catalog Expansion & Licensing Clearance Dossier**: Authoritative transcript and curriculum review prior to external voice asset generation.
+* **Task M3-T02: Production Audio Asset Provisioning & Human Speech QA**: External synthesis or recording under approved provider agreement followed by individual human speech QA sign-offs.
+* **Task M3-T03: E2E Production Readiness & Release Packaging**: Verification of fully signed-off media assets under strict production startup guard.
+
 

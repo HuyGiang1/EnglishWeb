@@ -1,0 +1,117 @@
+{
+  "catalogVersion": "1.0.0",
+  "generatedAt": "2026-10-17T17:45:00Z",
+  "description": "EnglishFlow Canonical Curated Audio Exercises Catalog for Offline Manifest and Pipeline Validation",
+  "exercises": [
+    {
+      "contentId": "a1000000-0000-0000-0000-000000000001",
+      "contentType": "DICTATION",
+      "cefrLevel": "A1",
+      "topicTag": "Daily Life",
+      "title": "Daily Routine",
+      "transcriptText": "I drink a cup of coffee every morning before work.",
+      "transcriptSha256": "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd",
+      "audioStorageKey": "/api/v1/media/audio/curated/dictation-a1-001.wav",
+      "expectedDurationSeconds": 2.71
+    },
+    {
+      "contentId": "a2000000-0000-0000-0000-000000000002",
+      "contentType": "DICTATION",
+      "cefrLevel": "A2",
+      "topicTag": "Leisure",
+      "title": "Weekend Plans",
+      "transcriptText": "We are going to visit the modern art museum on Saturday afternoon.",
+      "transcriptSha256": "65962f64a3af038bd5a3d2f2a8b6ef9c4d6a855cf3c7cf0a0444ea3d985153e9",
+      "audioStorageKey": "/api/v1/media/audio/curated/dictation-a2-002.wav",
+      "expectedDurationSeconds": 3.59
+    },
+    {
+      "contentId": "b1000000-0000-0000-0000-000000000015",
+      "contentType": "DICTATION",
+      "cefrLevel": "B1",
+      "topicTag": "Education",
+      "title": "Technology in Education",
+      "transcriptText": "Online learning platforms allow students to study at their own pace.",
+      "transcriptSha256": "92180660fe63f41462af5e14643c8b8a01c61bf7801b4e7a350ee80390d2d67b",
+      "audioStorageKey": "/api/v1/media/audio/curated/dictation-b1-015.wav",
+      "expectedDurationSeconds": 3.76
+    },
+    {
+      "contentId": "b2000000-0000-0000-0000-000000000042",
+      "contentType": "DICTATION",
+      "cefrLevel": "B2",
+      "topicTag": "Economics",
+      "title": "Economic Resilience",
+      "transcriptText": "The country showed great economic resilience during the crisis.",
+      "transcriptSha256": "e6aab3555e2595746f2886cd8fe3331c92e0d51a0e53ee8bc041d4c2a0ba0a71",
+      "audioStorageKey": "/api/v1/media/audio/curated/dictation-b2-042.wav",
+      "expectedDurationSeconds": 3.44
+    },
+    {
+      "contentId": "c1000000-0000-0000-0000-000000000088",
+      "contentType": "DICTATION",
+      "cefrLevel": "C1",
+      "topicTag": "Science",
+      "title": "Scientific Methodology",
+      "transcriptText": "Empirical evidence is fundamental to formulating hypotheses and drawing rigorous conclusions.",
+      "transcriptSha256": "55a956d110dd5ec7fcdf473eb07ebb9e6b53c4fed83147a89b97c465594a5019",
+      "audioStorageKey": "/api/v1/media/audio/curated/dictation-c1-088.wav",
+      "expectedDurationSeconds": 5.33
+    },
+    {
+      "contentId": "a1000000-0000-0000-0001-000000000001",
+      "contentType": "SHADOWING",
+      "cefrLevel": "A1",
+      "topicTag": "Greetings",
+      "title": "Morning Greetings",
+      "transcriptText": "Good morning, how are you doing today?",
+      "transcriptSha256": "a776eecde4986cd5dcc0f72ff628fc2d3f156b360fc1a46bbbc8f260dd61b0bf",
+      "audioStorageKey": "/api/v1/media/audio/curated/shadowing-a1-001.wav",
+      "expectedDurationSeconds": 2.50
+    },
+    {
+      "contentId": "a2000000-0000-0000-0001-000000000002",
+      "contentType": "SHADOWING",
+      "cefrLevel": "A2",
+      "topicTag": "Travel",
+      "title": "Asking for Directions",
+      "transcriptText": "Could you please tell me the way to the train station?",
+      "transcriptSha256": "9dd760d3b7a7cc803451a2ec41310f79c8123eddf6d1d85f77582ba4c4c88d4e",
+      "audioStorageKey": "/api/v1/media/audio/curated/shadowing-a2-002.wav",
+      "expectedDurationSeconds": 3.10
+    },
+    {
+      "contentId": "b1000000-0000-0000-0001-000000000015",
+      "contentType": "SHADOWING",
+      "cefrLevel": "B1",
+      "topicTag": "Fluency",
+      "title": "Building Confidence",
+      "transcriptText": "Practicing every day helps build natural speaking rhythm and confidence.",
+      "transcriptSha256": "9697944f408ee4c6a238ecf8c3e7bd5563996af285f02e57da86a02a7fcac3fd",
+      "audioStorageKey": "/api/v1/media/audio/curated/shadowing-b1-015.wav",
+      "expectedDurationSeconds": 4.20
+    },
+    {
+      "contentId": "b2000000-0000-0000-0001-000000000042",
+      "contentType": "SHADOWING",
+      "cefrLevel": "B2",
+      "topicTag": "Communication",
+      "title": "Connection Over Perfection",
+      "transcriptText": "Fluency is not about perfection, but connection and rhythm.",
+      "transcriptSha256": "55f69e52cc4ab92016f67574566a80dae6d6829ecd233c245b722c5e996418a4",
+      "audioStorageKey": "/api/v1/media/audio/curated/shadowing-b2-042.wav",
+      "expectedDurationSeconds": 3.80
+    },
+    {
+      "contentId": "c1000000-0000-0000-0001-000000000088",
+      "contentType": "SHADOWING",
+      "cefrLevel": "C1",
+      "topicTag": "Rhetoric",
+      "title": "Articulate Cadence",
+      "transcriptText": "Articulating complex ideas clearly requires deliberate practice and thoughtful cadence.",
+      "transcriptSha256": "a6825aeb771a6f941a80ae04ba9380bb6b21040bc23e008c23676bac0d5e3e21",
+      "audioStorageKey": "/api/v1/media/audio/curated/shadowing-c1-088.wav",
+      "expectedDurationSeconds": 5.10
+    }
+  ]
+}

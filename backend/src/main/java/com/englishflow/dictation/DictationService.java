@@ -32,6 +32,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.englishflow.content.audio.AudioManifestService;
+import com.englishflow.dictation.exception.DictationException;
+
 @Service
 public class DictationService {
 
@@ -42,6 +45,7 @@ public class DictationService {
     private final Clock clock;
     private final ObjectMapper objectMapper;
     private final ResourceLoader resourceLoader;
+    private final AudioManifestService audioManifestService;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -55,7 +59,8 @@ public class DictationService {
         UserRepository userRepository,
         Clock clock,
         ObjectMapper objectMapper,
-        ResourceLoader resourceLoader
+        ResourceLoader resourceLoader,
+        AudioManifestService audioManifestService
     ) {
         this.learningContentRepository = learningContentRepository;
         this.dictationAttemptRepository = dictationAttemptRepository;
@@ -64,6 +69,7 @@ public class DictationService {
         this.clock = clock;
         this.objectMapper = objectMapper;
         this.resourceLoader = resourceLoader;
+        this.audioManifestService = audioManifestService;
     }
 
     /**
@@ -83,7 +89,7 @@ public class DictationService {
             boolean isCompleted = lastAttemptOpt.isPresent();
             Double lastAccuracy = lastAttemptOpt.map(a -> a.getAccuracyScore().doubleValue()).orElse(null);
             Double duration = content.getAudioDurationSeconds() != null ? content.getAudioDurationSeconds().doubleValue() : null;
-            boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey());
+            boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
 
             summaries.add(new DictationExerciseSummaryResponse(
                 content.getId(),
@@ -112,7 +118,7 @@ public class DictationService {
             .orElseThrow(() -> new ExerciseNotFoundException("Dictation exercise not found: " + contentId));
 
         Double duration = content.getAudioDurationSeconds() != null ? content.getAudioDurationSeconds().doubleValue() : null;
-        boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey());
+        boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
 
         return new DictationExerciseDetailResponse(
             content.getId(),
@@ -203,7 +209,14 @@ public class DictationService {
             return new DictationSubmissionResult(response, true);
         }
 
-        // 2. Fresh submission: evaluate transcription
+        // 2. Fresh submission: verify audio availability before processing
+        if (!isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText())) {
+            throw new DictationException(
+                "AUDIO_UNAVAILABLE",
+                "Cannot submit dictation attempt because exercise audio is unavailable or unapproved in this environment"
+            );
+        }
+
         DictationEvaluationResult eval = DictationDiffEngine.evaluate(content.getTranscriptText(), request.submittedTranscript());
         Instant nowUtc = Instant.now(clock);
         ZoneId userZone = resolveUserZone(user.getTimezone());
@@ -262,28 +275,14 @@ public class DictationService {
     }
 
     public boolean isAudioAvailable(String storageKey) {
+        return isAudioAvailable(storageKey, null);
+    }
+
+    public boolean isAudioAvailable(String storageKey, String canonicalTranscript) {
         if (storageKey == null || storageKey.isBlank()) {
             return false;
         }
-        String subPath = storageKey.replaceFirst("^/api/v1/media/audio/", "");
-        try {
-            Resource cp = resourceLoader.getResource("classpath:/static/media/audio/" + subPath);
-            if (cp.exists()) {
-                return true;
-            }
-            Resource testCp = resourceLoader.getResource("classpath:/audio/" + subPath);
-            if (testCp.exists()) {
-                return true;
-            }
-            Resource file = resourceLoader.getResource("file:./backend/src/main/resources/static/media/audio/" + subPath);
-            if (file.exists()) {
-                return true;
-            }
-            Resource rootFile = resourceLoader.getResource("file:./src/main/resources/static/media/audio/" + subPath);
-            return rootFile.exists();
-        } catch (Exception ex) {
-            return false;
-        }
+        return audioManifestService.isAudioAvailable(storageKey, canonicalTranscript);
     }
 
     private void acquireAttemptLock(UUID userId, UUID attemptId) {

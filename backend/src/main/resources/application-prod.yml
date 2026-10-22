@@ -1,0 +1,13 @@
+# EnglishFlow Spring Boot Production Profile
+# Active when SPRING_PROFILES_ACTIVE=prod or production
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true # require SSL/TLS encrypted cookies in production
+
+englishflow:
+  media:
+    production-mode: true
+    strict-startup-check: ${ENGLISHFLOW_STRICT_AUDIO_CHECK:false}

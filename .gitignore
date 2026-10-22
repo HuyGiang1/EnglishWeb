@@ -140,3 +140,8 @@ tmp/
 !**/src/main/resources/audio/**
 !**/src/test/resources/audio/**
 !docs/assets/**
+
+# Python cache & compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class

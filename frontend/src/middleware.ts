@@ -14,6 +14,10 @@ export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get("JSESSIONID");
   const pathname = request.nextUrl.pathname;
 
+  if (pathname.startsWith("/media/")) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const isProtected =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/vocabulary") ||
@@ -43,5 +47,6 @@ export const config = {
     "/shadowing/:path*",
     "/quiz/:path*",
     "/settings/:path*",
+    "/media/:path*",
   ],
 };

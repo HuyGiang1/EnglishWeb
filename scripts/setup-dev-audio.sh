@@ -54,7 +54,6 @@ if [ "${MODE}" = "--spoken" ] && command -v say >/dev/null 2>&1 && command -v af
     say -v Samantha -r 160 -o "${TEMP_AIFF}" "${TEXT}"
     afconvert -f WAVE -d LEI16@22050 "${TEMP_AIFF}" "${BACKEND_AUDIO_DIR}/${FILENAME}"
     rm -f "${TEMP_AIFF}"
-    cp "${BACKEND_AUDIO_DIR}/${FILENAME}" "${FRONTEND_AUDIO_DIR}/${FILENAME}"
     echo "    Generated: ${FILENAME} (Spoken)"
   done
 
@@ -116,9 +115,6 @@ for filename, duration in exercises:
             data = struct.pack('<h', value)
             wav_file.writeframesraw(data)
 
-    f_path = os.path.join(frontend_dir, filename)
-    with open(b_path, 'rb') as src, open(f_path, 'wb') as dst:
-        dst.write(src.read())
 
 manifest = {
     "mode": "SYNTHETIC_TEST_FIXTURE",

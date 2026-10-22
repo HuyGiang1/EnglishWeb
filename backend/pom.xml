@@ -102,6 +102,19 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <!-- Strict Packaging Safety: Exclude unverified local dev and staging audio binaries from production JAR -->
+                    <exclude>static/media/audio/curated/*.wav</exclude>
+                    <exclude>static/media/audio/curated/*.mp3</exclude>
+                    <exclude>static/media/audio/curated/*.ogg</exclude>
+                    <exclude>static/media/audio/staging/**</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

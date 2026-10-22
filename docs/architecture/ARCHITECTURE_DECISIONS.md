@@ -1,4 +1,4 @@
-﻿# EnglishFlow — Architectural Decision Records (ADRs)
+# EnglishFlow — Architectural Decision Records (ADRs)
 
 **Document Version**: 1.1.0  
 **Milestone**: M0 — Discovery & Blueprint (Task M0-T09)  
@@ -177,3 +177,23 @@
 * **Consequences**:
   * *Positive*: Eliminates background worker infrastructure, eliminates timezone scheduler bugs, ensures real-time accuracy.
   * *Trade-off*: Heatmap queries execute SQL aggregations, mitigated by sub-15ms indexing over annual records.
+
+---
+
+## ADR-012: Production Spoken Audio Architecture, Licensing Provenance & Offline Safety Invariants
+
+* **Status**: **PROPOSED** (Candidate evaluation; AWS Polly Neural is the preferred candidate, NOT yet an authorized paid provider)
+* **Context**: Daily Dictation and Speech Shadowing require spoken English audio. In local development, synthetic tones and macOS `say` synthesis provide developer ergonomics, but are restricted from public distribution under Apple EULA Section 2M. Production deployment demands legally cleared commercial redistribution rights, human speech quality verification, and deterministic offline ingestion.
+* **Decision**: 
+  1. **Manifest v2.0.0 Metadata Contract**: Audio assets require 16 auditable metadata attributes including content ID, file SHA-256, canonical transcript hash, mimeType, accent, provider, voice ID, provenance, license evidence reference, distribution approval, human QA sign-off, and reviewed timestamp.
+  2. **Provider-Independent Offline Ingestion**: Implement `scripts/ingest-audio.py` and `scripts/validate-audio-manifest.py` to stage and validate assets offline without paid API invocations or cloud credentials.
+  3. **Dual Logical Approval Gates**: Licensing Gate and Human Speech QA Gate are strictly decoupled. Neither gate can self-authorize or automatically approve the other.
+  4. **Runtime Media Security & Static Closure**: Serve audio strictly via `/api/v1/media/audio/**` guarded by `AudioMediaSecurityInterceptor`. In production mode (`englishflow.media.production-mode: true`), unapproved assets, synthetic fixtures, and local macOS speech are rejected with `403 Forbidden` (`AUDIO_UNAPPROVED_FOR_PRODUCTION`). Classpath direct static mapping is disabled (`spring.web.resources.add-mappings: false`) and Next.js edge middleware blocks `/media/*` with `404 Not Found`.
+  5. **Startup Guard & Graceful Degradation**: Published exercises with unapproved audio either fail startup (`strict-startup-check: true`) or gracefully degrade (`strict-startup-check: false`), marking affected exercises audio-unavailable without impacting unrelated learning modules (Vocabulary, Collections, Review, Quizzes, Heatmap, Settings).
+* **Alternatives Considered**:
+  * *Immediate Paid Provider Integration (AWS Polly / ElevenLabs)*: Rejected. Cannot commit credentials or incur billing prior to explicit commercial rights authorization.
+  * *Signal Processing-Only QA*: Rejected. Automated SNR/RMS metrics cannot guarantee natural pronunciation, accent compliance, or speech intelligibility.
+* **Consequences**:
+  * *Positive*: Complete protection against distributing unapproved or unlicensed media; full offline testability and reproducibility; seamless future integration when licensing is approved.
+  * *Trade-off*: In production mode prior to commercial licensing, dictation and shadowing remain gracefully degraded while all other modules are active.
+

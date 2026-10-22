@@ -169,25 +169,39 @@ curl -i http://localhost:3000/api/v1/vocabulary
 
 ---
 
-## 8. Audio Assets, Licensing & Fresh-Clone Setup
+## 8. Audio Assets, Licensing & Production Safety Pipeline (M3-T01A)
 
 ### Licensing & Redistribution Notice
-* **macOS Synthesized Voices**: Local audio synthesized via macOS `say` (e.g. Samantha) is governed by the Apple Software License Agreement, which restricts speech synthesis outputs to private, local personal use. These files are **NOT** CC0, royalty-free, or licensed for public redistribution.
-* **Git Hygiene**: All binary audio assets (`*.wav`) are strictly excluded from version control via `.gitignore`. Unverified proprietary audio files must never be force-committed to the repository.
+* **macOS Synthesized Voices**: Local audio synthesized via macOS `say` (e.g. Samantha) is governed by Apple Software License Agreement Section 2M, restricting speech synthesis outputs to private, local personal use. These files are **NOT** licensed for public redistribution.
+* **Git Hygiene**: All binary audio assets (`*.wav`, `*.mp3`) are strictly excluded from version control via `.gitignore`. Unverified audio binaries must never be committed to the repository.
 
-### Fresh-Clone Developer Audio Provisioning
-To enable audio playback on a fresh clone without proprietary file dependencies:
+### Manifest v2.0.0 & Provenance Contract
+Every audio asset requires 16 auditable metadata attributes defined in `backend/src/main/resources/static/media/audio/curated/audio-manifest.json`:
+- `contentId`, `storageKey`, `sha256`, `mimeType`, `fileSizeBytes`, `durationSeconds`, `transcriptSha256`, `accent`, `provider`, `voiceId`, `provenance`, `licenseEvidenceRef`, `distributionApproved`, `humanQaVerified`, `reviewedAt`, `readinessStatus`.
+- **Zero Self-Authorization Invariant**: Ingestion or valid media format never implies approval. `distributionApproved` and `humanQaVerified` default strictly to `false`.
+
+### Offline Tooling
 ```bash
 # Provision local developer audio fixtures (synthetic 22.05 kHz 16-bit PCM WAV)
 ./scripts/setup-dev-audio.sh
 
-# Or on macOS with system voices installed (for local non-redistributable development):
-./scripts/setup-dev-audio.sh --spoken
+# Verify 100% transcript integrity across Flyway DB seeds, canonical catalog, and manifest
+python3 scripts/verify-transcript-integrity.py
+
+# Validate manifest integrity (dev mode)
+python3 scripts/validate-audio-manifest.py --manifest backend/src/main/resources/static/media/audio/curated/audio-manifest.json
+
+# Validate manifest under strict production policy (fails closed on unapproved assets)
+python3 scripts/validate-audio-manifest.py --manifest backend/src/main/resources/static/media/audio/curated/audio-manifest.json --production
+
+# Ingest new audio offline (marks as PENDING_HUMAN_QA without paid provider calls)
+python3 scripts/ingest-audio.py --content-id <UUID> --source-file <PATH> --provider <NAME> --accent en-US --license-evidence <REF>
 ```
 
-### Missing Asset Graceful Degradation
-* Exercises without resolvable audio assets deliver `isAudioAvailable: false` in summary and detail endpoints.
-* The frontend UI renders an "Audio Missing" badge and disables interaction cards until audio assets are provisioned, preventing broken playback states or deceptive exercise availability.
+### Production Media Serving & Static Bypass Guards
+* **Endpoint Protection**: `/api/v1/media/audio/**` is intercepted by `AudioMediaSecurityInterceptor`. In production (`englishflow.media.production-mode: true`), unapproved assets, synthetic fixtures, and local macOS speech are rejected with `403 Forbidden` (`AUDIO_UNAPPROVED_FOR_PRODUCTION`).
+* **Static Closure**: `spring.web.resources.add-mappings: false` disables default classpath static serving at `/**`. Next.js Edge Middleware blocks direct `/media/*` requests with `404 Not Found`.
+* **Deployment Guard**: `AudioProductionReadinessGuard` blocks application startup under `strict-startup-check: true` if unapproved audio is published, or gracefully degrades individual lessons (`isAudioAvailable: false`) while keeping Vocabulary, Collections, SRS, Quizzes, Heatmap, and Settings 100% operational.
 
 ---
 
