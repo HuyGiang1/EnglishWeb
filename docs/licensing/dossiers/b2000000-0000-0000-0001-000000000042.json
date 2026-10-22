@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentId": "b2000000-0000-0000-0001-000000000042",
+  "contentType": "SHADOWING",
+  "cefrLevel": "B2",
+  "title": "Connection Over Perfection",
+  "storageKey": "/api/v1/media/audio/curated/shadowing-b2-042.wav",
+  "fileName": "shadowing-b2-042.wav",
+  "transcriptSha256": "55f69e52cc4ab92016f67574566a80dae6d6829ecd233c245b722c5e996418a4",
+  "audioSha256": null,
+  "provider": "AWS_POLLY_CANDIDATE",
+  "voiceId": "Joanna",
+  "generationMetadata": {
+    "engine": "neural",
+    "sampleRateHertz": 24000,
+    "audioFormat": "audio/wav",
+    "generatedAt": null,
+    "parameterSummary": "AWS Polly Neural candidate; offline unapproved template"
+  },
+  "licenseEvidenceRef": "docs/licensing/LOCAL_DEV_RESTRICTIONS.md",
+  "authorizedDistributionScope": "INTERNAL_DEVELOPMENT_ONLY",
+  "licenseReviewStatus": "PENDING",
+  "distributionApproved": false,
+  "reviewerIdentity": null,
+  "humanSpeechQaDecision": "PENDING",
+  "humanQaVerified": false,
+  "humanReviewerIdentity": null,
+  "reviewedAt": null,
+  "audioReadinessStatus": "PENDING_LICENSE",
+  "notes": "Offline unapproved baseline dossier template. Legal certification and human linguistic signoff required before production release promotion."
+}

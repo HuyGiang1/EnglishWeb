@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentId": "b1000000-0000-0000-0001-000000000015",
+  "contentType": "SHADOWING",
+  "cefrLevel": "B1",
+  "title": "Building Confidence",
+  "storageKey": "/api/v1/media/audio/curated/shadowing-b1-015.wav",
+  "fileName": "shadowing-b1-015.wav",
+  "transcriptSha256": "9697944f408ee4c6a238ecf8c3e7bd5563996af285f02e57da86a02a7fcac3fd",
+  "audioSha256": null,
+  "provider": "AWS_POLLY_CANDIDATE",
+  "voiceId": "Matthew",
+  "generationMetadata": {
+    "engine": "neural",
+    "sampleRateHertz": 24000,
+    "audioFormat": "audio/wav",
+    "generatedAt": null,
+    "parameterSummary": "AWS Polly Neural candidate; offline unapproved template"
+  },
+  "licenseEvidenceRef": "docs/licensing/LOCAL_DEV_RESTRICTIONS.md",
+  "authorizedDistributionScope": "INTERNAL_DEVELOPMENT_ONLY",
+  "licenseReviewStatus": "PENDING",
+  "distributionApproved": false,
+  "reviewerIdentity": null,
+  "humanSpeechQaDecision": "PENDING",
+  "humanQaVerified": false,
+  "humanReviewerIdentity": null,
+  "reviewedAt": null,
+  "audioReadinessStatus": "PENDING_LICENSE",
+  "notes": "Offline unapproved baseline dossier template. Legal certification and human linguistic signoff required before production release promotion."
+}

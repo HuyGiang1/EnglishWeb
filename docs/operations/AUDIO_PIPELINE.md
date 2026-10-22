@@ -232,3 +232,89 @@ scratch/e2e-m3-t01a-audio-pipeline.sh
 | **Human Speech QA** | **PENDING** | Assets in repo are development placeholders; physical ear QA pending. |
 | **ADR-012 Architectural Status** | **PROPOSED** | Architecture Decision Record remains PROPOSED pending rights acquisition. |
 
+---
+
+## 10. M3-T01B Runtime Volume Delivery & Staging Security
+
+### 10.1 Storage Root Configuration (`englishflow.media.storage-root`)
+Production media delivery decouples speech binaries from the executable JAR. The backend reads media strictly from an external runtime filesystem volume:
+- Property: `englishflow.media.storage-root` (env var `ENGLISHFLOW_MEDIA_STORAGE_ROOT`).
+- Target Directory: Refers to the directory containing `curated/`.
+- Public Endpoint Contract: Kept invariant as `/api/v1/media/audio/curated/<filename>`.
+- Path Resolution: The resource handler maps `/api/v1/media/audio/**` directly to `file:${storage-root}/` without duplicating the `curated/` folder segment.
+- Anti-Escape Protection: `AudioMediaSecurityInterceptor` resolves canonical paths and immediately blocks symlinks escaping the configured storage root (`403 Forbidden` with `SYMLINK_ESCAPE_DETECTED`). Path traversals (`..`, `%2e%2e`) are blocked with `400 Bad Request`.
+
+### 10.2 Read-Only Volume Container Mount Procedure
+In containerized Kubernetes or Docker deployments:
+```yaml
+# Kubernetes Pod volume mount specification
+spec:
+  containers:
+    - name: englishflow-backend
+      image: englishflow-backend:latest
+      env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: ENGLISHFLOW_MEDIA_STORAGE_ROOT
+          value: "/var/englishflow/media/audio"
+      volumeMounts:
+        - name: media-volume
+          mountPath: /var/englishflow/media/audio
+          readOnly: true
+  volumes:
+    - name: media-volume
+      persistentVolumeClaim:
+        claimName: englishflow-curated-media-pvc
+        readOnly: true
+```
+A read-only volume prevents unauthorized runtime modification, but does not self-authorize media licensing. The backend independently verifies every requested asset against the authoritative manifest and licensing gates.
+
+### 10.3 Licensing Dossier Contract (`docs/licensing/dossiers/`)
+Per-asset licensing dossiers are maintained in `docs/licensing/dossiers/<contentId>.json` according to `docs/licensing/dossier.schema.json`.
+- Default state is strictly unapproved:
+  ```json
+  {
+    "distributionApproved": false,
+    "humanQaVerified": false,
+    "licenseReviewStatus": "PENDING",
+    "audioReadinessStatus": "PENDING_LICENSE",
+    "reviewedAt": null
+  }
+  ```
+- All 10 curated catalog items have committed unapproved dossiers.
+- Git commit provenance and peer review form the organizational trust boundary for legal and linguistic QA signoffs.
+
+### 10.4 Versioned Media Promotion & Rollback Workflow
+Offline promotions are managed via `scripts/promote-audio-release.py`:
+1. **Validation**: Enforces approved dossier flags, verifies audio byte SHA-256 and transcript SHA-256 against the canonical catalog.
+2. **Staging**: Stages approved bytes into `<storage-root>/releases/<release-tag>/curated/` and creates release metadata and deployment manifest.
+3. **Dry-Run**: Supported via `--dry-run` to simulate validation without modifying disk state.
+4. **Atomic Activation**: Supported via `--activate-release <tag>`, updating `<storage-root>/curated` symlink atomically and appending to `release-history.json`.
+5. **Rollback**: Supported via `--rollback`, atomically pointing `<storage-root>/curated` back to the prior coherent release without mixing versions.
+
+### 10.6 Release Consistency, Permissions & Recovery Architecture (M3-T01B-1 Audit)
+
+1. **Release Manager vs. Runtime Permissions**:
+   - **Offline Release Manager**: Requires write permissions to the underlying storage volume repository (`/var/englishflow/media/audio/releases/`) to stage versioned assets and atomically update symlinks (`curated -> releases/<tag>/curated`).
+   - **Runtime Backend Application**: Must mount the volume as strictly **read-only** (`:ro` in Docker / `readOnly: true` in Kubernetes / `chmod 555`). The runtime process has zero write permissions to disk; any attempted file creation or alteration by application code fails with `Read-only file system` (`EACCES`).
+2. **Authoritative Manifest Location & Identity**:
+   - The authoritative deployment manifest is located at `<storage-root>/curated/audio-manifest.json` (resolving directly to `<storage-root>/releases/<active-release>/curated/audio-manifest.json`).
+   - Release identity is cryptographically bound at backend startup: `releaseTag`, `manifestSha256`, `boundCuratedDir`, and `loadedAt`.
+3. **Immutable Release Selection & Snapshot Isolation (Model A)**:
+   - At startup, `AudioManifestService` resolves the canonical curated directory `boundCuratedDir` and locks to that specific release.
+   - Resource serving in `WebMvcConfig` resolves static audio bytes strictly from `boundCuratedDir`.
+   - **Immunity to Release Drift & TOCTOU**: If an external release manager switches the `curated` symlink to a newer release while the backend is running, the running backend continues to serve audio strictly from its startup release snapshot. No request can receive bytes from an asset version different from the manifest version it was authorized against.
+   - **Release Transition / Rolling Restart**: To transition traffic to a new release, deployment operators execute an atomic symlink switch followed by a backend container restart (e.g. Kubernetes rolling update or blue/green switch).
+4. **Activation & Rollback Commands**:
+   - Stage release: `python3 scripts/promote-audio-release.py --release-tag <tag> --source-dir <dir> --storage-root <root>`
+   - Dry-run validation: `python3 scripts/promote-audio-release.py --release-tag <tag> --source-dir <dir> --storage-root <root> --dry-run`
+   - Atomic activation: `python3 scripts/promote-audio-release.py --storage-root <root> --activate-release <tag>`
+   - Atomic rollback: `python3 scripts/promote-audio-release.py --storage-root <root> --rollback`
+   - Release status: `python3 scripts/promote-audio-release.py --storage-root <root> --status`
+5. **Failure Recovery & Pre-Activation Verification**:
+   - Staging occurs in a temporary PID-isolated directory (`.tmp.<tag>.<pid>`) and is atomically renamed only after all audio files, manifest SHA-256, and metadata pass validation. Interrupted promotions leave no partial releases.
+   - `activate_release` and `rollback_release` perform strict pre-activation integrity verification: validating `release-metadata.json`, comparing `manifestSha256`, and verifying the physical existence and non-zero size of every staged audio file. Corrupted or incomplete releases are rejected from activation.
+6. **Known Test Limitations & Boundaries**:
+   - Staging and test rehearsal use disposable test fixtures labeled with `provenance: TEST_CONTAINER_FIXTURE` and `READONLY_CONTAINER_FIXTURE`. These stubs test delivery and authorization mechanics only and do NOT constitute commercial licensing rights.
+   - Commercial production speech remains **UNACQUIRED**.
+   - ADR-012 remains strictly **PROPOSED**.

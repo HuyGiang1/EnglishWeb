@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentId": "a1000000-0000-0000-0001-000000000001",
+  "contentType": "SHADOWING",
+  "cefrLevel": "A1",
+  "title": "Morning Greetings",
+  "storageKey": "/api/v1/media/audio/curated/shadowing-a1-001.wav",
+  "fileName": "shadowing-a1-001.wav",
+  "transcriptSha256": "a776eecde4986cd5dcc0f72ff628fc2d3f156b360fc1a46bbbc8f260dd61b0bf",
+  "audioSha256": null,
+  "provider": "AWS_POLLY_CANDIDATE",
+  "voiceId": "Joanna",
+  "generationMetadata": {
+    "engine": "neural",
+    "sampleRateHertz": 24000,
+    "audioFormat": "audio/wav",
+    "generatedAt": null,
+    "parameterSummary": "AWS Polly Neural candidate; offline unapproved template"
+  },
+  "licenseEvidenceRef": "docs/licensing/LOCAL_DEV_RESTRICTIONS.md",
+  "authorizedDistributionScope": "INTERNAL_DEVELOPMENT_ONLY",
+  "licenseReviewStatus": "PENDING",
+  "distributionApproved": false,
+  "reviewerIdentity": null,
+  "humanSpeechQaDecision": "PENDING",
+  "humanQaVerified": false,
+  "humanReviewerIdentity": null,
+  "reviewedAt": null,
+  "audioReadinessStatus": "PENDING_LICENSE",
+  "notes": "Offline unapproved baseline dossier template. Legal certification and human linguistic signoff required before production release promotion."
+}

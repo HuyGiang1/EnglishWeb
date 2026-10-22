@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnglishFlow Per-Asset Licensing and Human QA Dossier Schema",
+  "description": "Formal schema for per-asset licensing evidence, voice synthesis metadata, human speech QA verification, and production release distribution approval.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "contentId",
+    "contentType",
+    "title",
+    "storageKey",
+    "fileName",
+    "transcriptSha256",
+    "provider",
+    "voiceId",
+    "generationMetadata",
+    "licenseEvidenceRef",
+    "authorizedDistributionScope",
+    "licenseReviewStatus",
+    "distributionApproved",
+    "reviewerIdentity",
+    "humanSpeechQaDecision",
+    "humanQaVerified",
+    "humanReviewerIdentity",
+    "reviewedAt",
+    "audioReadinessStatus"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "contentId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Canonical UUID matching learning_contents table and catalog"
+    },
+    "contentType": {
+      "type": "string",
+      "enum": ["DICTATION", "SHADOWING"]
+    },
+    "cefrLevel": {
+      "type": "string",
+      "enum": ["A1", "A2", "B1", "B2", "C1", "C2"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storageKey": {
+      "type": "string",
+      "description": "Relative storage key, e.g. curated/dictation-a1-001.wav or /api/v1/media/audio/curated/..."
+    },
+    "fileName": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+\\.(wav|mp3|m4a)$"
+    },
+    "transcriptSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Cryptographic SHA-256 hash of authoritative canonical transcript text"
+    },
+    "audioSha256": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Cryptographic SHA-256 hash of approved audio byte stream. Must be null until approved bytes exist."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Synthesis or recording provider (e.g. AWS_POLLY_CANDIDATE, ELEVENLABS_CANDIDATE, HUMAN_STUDIO)"
+    },
+    "voiceId": {
+      "type": "string",
+      "description": "Voice identifier, e.g. Joanna, Matthew, Amy"
+    },
+    "generationMetadata": {
+      "type": "object",
+      "required": ["engine", "audioFormat"],
+      "properties": {
+        "engine": { "type": "string" },
+        "sampleRateHertz": { "type": ["integer", "null"] },
+        "audioFormat": { "type": "string" },
+        "generatedAt": { "type": ["string", "null"] },
+        "parameterSummary": { "type": "string" }
+      }
+    },
+    "licenseEvidenceRef": {
+      "type": "string",
+      "description": "Reference path to legal terms, commercial license, or dev restriction document"
+    },
+    "authorizedDistributionScope": {
+      "type": "string",
+      "enum": [
+        "INTERNAL_DEVELOPMENT_ONLY",
+        "PUBLIC_PRODUCTION",
+        "STAGING_INTERNAL_EVALUATION",
+        "UNAUTHORIZED"
+      ]
+    },
+    "licenseReviewStatus": {
+      "type": "string",
+      "enum": ["PENDING", "APPROVED", "REJECTED"]
+    },
+    "distributionApproved": {
+      "type": "boolean",
+      "description": "Explicit boolean flag. Must be false by default until legally certified."
+    },
+    "reviewerIdentity": {
+      "type": ["string", "null"],
+      "description": "Human legal or security reviewer identifier. Must be null by default."
+    },
+    "humanSpeechQaDecision": {
+      "type": "string",
+      "enum": ["PENDING", "PASSED", "FAILED"]
+    },
+    "humanQaVerified": {
+      "type": "boolean",
+      "description": "Explicit boolean flag confirming native cadence, phonetic clarity, and lack of artifacting."
+    },
+    "humanReviewerIdentity": {
+      "type": ["string", "null"],
+      "description": "Human linguist or QA engineer identifier. Must be null by default."
+    },
+    "reviewedAt": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp of formal review signoff. Must be null by default."
+    },
+    "audioReadinessStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING_LICENSE",
+        "LOCAL_SPOKEN",
+        "SYNTHETIC_FIXTURE",
+        "LICENSED_DISTRIBUTABLE",
+        "MISSING"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

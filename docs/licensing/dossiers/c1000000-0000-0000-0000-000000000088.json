@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentId": "c1000000-0000-0000-0000-000000000088",
+  "contentType": "DICTATION",
+  "cefrLevel": "C1",
+  "title": "Scientific Methodology",
+  "storageKey": "/api/v1/media/audio/curated/dictation-c1-088.wav",
+  "fileName": "dictation-c1-088.wav",
+  "transcriptSha256": "55a956d110dd5ec7fcdf473eb07ebb9e6b53c4fed83147a89b97c465594a5019",
+  "audioSha256": null,
+  "provider": "AWS_POLLY_CANDIDATE",
+  "voiceId": "Matthew",
+  "generationMetadata": {
+    "engine": "neural",
+    "sampleRateHertz": 24000,
+    "audioFormat": "audio/wav",
+    "generatedAt": null,
+    "parameterSummary": "AWS Polly Neural candidate; offline unapproved template"
+  },
+  "licenseEvidenceRef": "docs/licensing/LOCAL_DEV_RESTRICTIONS.md",
+  "authorizedDistributionScope": "INTERNAL_DEVELOPMENT_ONLY",
+  "licenseReviewStatus": "PENDING",
+  "distributionApproved": false,
+  "reviewerIdentity": null,
+  "humanSpeechQaDecision": "PENDING",
+  "humanQaVerified": false,
+  "humanReviewerIdentity": null,
+  "reviewedAt": null,
+  "audioReadinessStatus": "PENDING_LICENSE",
+  "notes": "Offline unapproved baseline dossier template. Legal certification and human linguistic signoff required before production release promotion."
+}

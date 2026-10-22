@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentId": "b2000000-0000-0000-0000-000000000042",
+  "contentType": "DICTATION",
+  "cefrLevel": "B2",
+  "title": "Economic Resilience",
+  "storageKey": "/api/v1/media/audio/curated/dictation-b2-042.wav",
+  "fileName": "dictation-b2-042.wav",
+  "transcriptSha256": "e6aab3555e2595746f2886cd8fe3331c92e0d51a0e53ee8bc041d4c2a0ba0a71",
+  "audioSha256": null,
+  "provider": "AWS_POLLY_CANDIDATE",
+  "voiceId": "Joanna",
+  "generationMetadata": {
+    "engine": "neural",
+    "sampleRateHertz": 24000,
+    "audioFormat": "audio/wav",
+    "generatedAt": null,
+    "parameterSummary": "AWS Polly Neural candidate; offline unapproved template"
+  },
+  "licenseEvidenceRef": "docs/licensing/LOCAL_DEV_RESTRICTIONS.md",
+  "authorizedDistributionScope": "INTERNAL_DEVELOPMENT_ONLY",
+  "licenseReviewStatus": "PENDING",
+  "distributionApproved": false,
+  "reviewerIdentity": null,
+  "humanSpeechQaDecision": "PENDING",
+  "humanQaVerified": false,
+  "humanReviewerIdentity": null,
+  "reviewedAt": null,
+  "audioReadinessStatus": "PENDING_LICENSE",
+  "notes": "Offline unapproved baseline dossier template. Legal certification and human linguistic signoff required before production release promotion."
+}

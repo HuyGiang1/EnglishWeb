@@ -13,11 +13,15 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,17 +34,34 @@ public class AudioManifestService {
     private final ObjectMapper objectMapper;
     private final Environment environment;
 
-    @Value("${englishflow.media.production-mode:false}")
-    private boolean productionMode;
+    private static final Set<String> RESTRICTED_PROFILES = Set.of(
+        "prod", "production", "staging", "staging-public", "stage", "uat", "release"
+    );
+    private static final Set<String> PERMITTED_DEV_PROFILES = Set.of(
+        "dev", "test"
+    );
+
+    @Value("${englishflow.media.storage-root:}")
+    private String storageRoot;
+
+    @Value("${englishflow.media.production-mode:}")
+    private String configuredProductionMode;
+
+    private boolean productionMode = true;
 
     @Value("${englishflow.media.strict-startup-check:false}")
     private boolean strictStartupCheck;
 
     private String manifestVersion = "1.0.0";
     private String topLevelMode = "LOCAL_SPOKEN";
+    private String releaseTag = "DEVELOPMENT";
+    private String manifestSha256 = null;
+    private File boundCuratedDir = null;
+    private String loadedAt = null;
     private final Map<UUID, AudioManifestAsset> assetsByContentId = new ConcurrentHashMap<>();
     private final Map<String, AudioManifestAsset> assetsByStorageKey = new ConcurrentHashMap<>();
     private final Map<String, AudioManifestAsset> assetsByFileName = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> verifiedShaCache = new ConcurrentHashMap<>();
 
     public AudioManifestService(ResourceLoader resourceLoader, ObjectMapper objectMapper, Environment environment) {
         this.resourceLoader = resourceLoader;
@@ -50,18 +71,41 @@ public class AudioManifestService {
 
     @PostConstruct
     public void init() {
-        boolean isProdProfile = Arrays.stream(environment.getActiveProfiles())
-            .anyMatch(p -> "prod".equalsIgnoreCase(p) || "production".equalsIgnoreCase(p));
+        String[] activeProfiles = environment.getActiveProfiles();
+        Set<String> activeSet = Arrays.stream(activeProfiles)
+            .map(String::toLowerCase)
+            .collect(java.util.stream.Collectors.toSet());
 
-        String explicitMode = environment.getProperty("englishflow.media.production-mode");
+        String explicitProdMode = environment.getProperty("englishflow.media.production-mode");
+        String explicitDevMode = environment.getProperty("englishflow.media.developer-mode");
 
-        if (isProdProfile) {
-            if ("false".equalsIgnoreCase(explicitMode)) {
+        boolean hasRestrictedProfile = activeSet.stream().anyMatch(RESTRICTED_PROFILES::contains);
+
+        if (hasRestrictedProfile) {
+            if ("false".equalsIgnoreCase(explicitProdMode) || "true".equalsIgnoreCase(explicitDevMode)) {
                 throw new IllegalStateException(
-                    "FATAL CONFIGURATION ERROR: englishflow.media.production-mode cannot be set to false when running in production profile (prod/production). Security policy requires fail-closed audio validation in production."
+                    "FATAL CONFIGURATION ERROR: developer mode or disabling production media enforcement is strictly forbidden in restricted/staging/production profiles (" + activeSet + "). englishflow.media.production-mode cannot be set to false when running in production profile."
                 );
             }
             this.productionMode = true;
+        } else {
+            boolean isExclusivelyDevOrTest = !activeSet.isEmpty() && PERMITTED_DEV_PROFILES.containsAll(activeSet);
+            if (isExclusivelyDevOrTest) {
+                if ("true".equalsIgnoreCase(explicitProdMode)) {
+                    this.productionMode = true;
+                } else {
+                    this.productionMode = false;
+                }
+            } else {
+                // Unknown profile or no active profile: FAIL-CLOSED SECURE DEFAULT
+                if ("false".equalsIgnoreCase(explicitProdMode) || "true".equalsIgnoreCase(explicitDevMode)) {
+                    throw new IllegalStateException(
+                        "FATAL CONFIGURATION ERROR: developer mode can only be enabled in explicitly authorized 'dev' or 'test' profiles. Active profiles: " + activeSet
+                    );
+                }
+                this.productionMode = true;
+                log.warn("AudioManifestService: Running under unverified/unknown profile(s) {}. Fail-closed production security policy enforced by default.", activeSet);
+            }
         }
 
         reload();
@@ -71,16 +115,24 @@ public class AudioManifestService {
         assetsByContentId.clear();
         assetsByStorageKey.clear();
         assetsByFileName.clear();
+        verifiedShaCache.clear();
+        this.loadedAt = java.time.Instant.now().toString();
 
         JsonNode rootNode = loadManifestJson();
         if (rootNode == null) {
             log.warn("No audio-manifest.json found on classpath or filesystem. Defaulting to empty manifest.");
             this.topLevelMode = "MISSING";
+            this.releaseTag = "MISSING";
             return;
         }
 
         if (rootNode.hasNonNull("manifestVersion")) {
             this.manifestVersion = rootNode.get("manifestVersion").asText();
+        }
+        if (rootNode.hasNonNull("releaseTag")) {
+            this.releaseTag = rootNode.get("releaseTag").asText();
+        } else {
+            this.releaseTag = "UNTAGGED";
         }
         if (rootNode.hasNonNull("mode")) {
             this.topLevelMode = rootNode.get("mode").asText();
@@ -207,6 +259,10 @@ public class AudioManifestService {
                     return false;
                 }
             }
+            if (!verifyAssetSha256(asset)) {
+                log.warn("Production audio rejected for {}: SHA-256 hash mismatch between file on disk and manifest", storageKey);
+                return false;
+            }
             return true;
         }
 
@@ -259,7 +315,28 @@ public class AudioManifestService {
         if (fileName == null || fileName.isBlank()) {
             return false;
         }
-        // 1. Check classpath
+
+        // 1. If storage-root runtime volume is configured, check inside boundCuratedDir or storageRoot/curated/
+        if (boundCuratedDir != null && boundCuratedDir.exists()) {
+            File f = new File(boundCuratedDir, fileName);
+            if (f.exists() && f.length() > 0) {
+                return true;
+            }
+            if (productionMode) {
+                return false;
+            }
+        } else if (storageRoot != null && !storageRoot.isBlank()) {
+            File f = new File(storageRoot, "curated/" + fileName);
+            if (f.exists() && f.length() > 0) {
+                return true;
+            }
+            if (productionMode) {
+                // In production mode with configured volume, deny probing dev paths
+                return false;
+            }
+        }
+
+        // 2. Check classpath
         try {
             Resource res = resourceLoader.getResource("classpath:/static/media/audio/curated/" + fileName);
             if (res.exists() && res.contentLength() > 0) {
@@ -272,7 +349,12 @@ public class AudioManifestService {
         } catch (Exception ignored) {
         }
 
-        // 2. Check local workspace paths
+        // In production mode without volume, only classpath is allowed, never developer source tree
+        if (productionMode) {
+            return false;
+        }
+
+        // 3. Development-only workspace paths (only evaluated in non-production mode)
         String[] probePaths = {
             "backend/src/main/resources/static/media/audio/curated/" + fileName,
             "src/main/resources/static/media/audio/curated/" + fileName,
@@ -291,7 +373,45 @@ public class AudioManifestService {
     }
 
     private JsonNode loadManifestJson() {
-        // 1. Classpath probes
+        // 1. Check storageRoot runtime volume if configured
+        if (storageRoot != null && !storageRoot.isBlank()) {
+            try {
+                File rootDir = new File(storageRoot).getCanonicalFile();
+                File candidateCurated = new File(rootDir, "curated");
+                File manifestInCurated = new File(candidateCurated, "audio-manifest.json");
+                if (manifestInCurated.exists() && manifestInCurated.length() > 0) {
+                    try {
+                        this.boundCuratedDir = candidateCurated.getCanonicalFile();
+                        byte[] bytes = java.nio.file.Files.readAllBytes(manifestInCurated.toPath());
+                        this.manifestSha256 = calculateSha256(bytes);
+                        return objectMapper.readTree(bytes);
+                    } catch (Exception ex) {
+                        log.error("Failed to parse audio-manifest.json from storage-root/curated: {}", ex.getMessage());
+                        return null;
+                    }
+                }
+                File manifestInRoot = new File(rootDir, "audio-manifest.json");
+                if (manifestInRoot.exists() && manifestInRoot.length() > 0) {
+                    try {
+                        this.boundCuratedDir = rootDir.getCanonicalFile();
+                        byte[] bytes = java.nio.file.Files.readAllBytes(manifestInRoot.toPath());
+                        this.manifestSha256 = calculateSha256(bytes);
+                        return objectMapper.readTree(bytes);
+                    } catch (Exception ex) {
+                        log.error("Failed to parse audio-manifest.json from storage-root: {}", ex.getMessage());
+                        return null;
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("Failed to resolve storage root canonical path: {}", ex.getMessage());
+            }
+            if (productionMode) {
+                log.warn("Storage root configured ({}) but no audio-manifest.json found. Fail-closed production rejects dev fallback.", storageRoot);
+                return null;
+            }
+        }
+
+        // 2. Classpath probes
         String[] cpLocations = {
             "classpath:/static/media/audio/curated/audio-manifest.json",
             "classpath:/audio/audio-manifest.json"
@@ -301,7 +421,10 @@ public class AudioManifestService {
                 Resource res = resourceLoader.getResource(loc);
                 if (res.exists()) {
                     try (InputStream is = res.getInputStream()) {
-                        return objectMapper.readTree(is);
+                        byte[] bytes = is.readAllBytes();
+                        this.manifestSha256 = calculateSha256(bytes);
+                        this.boundCuratedDir = null;
+                        return objectMapper.readTree(bytes);
                     } catch (Exception ex) {
                         log.error("Failed to parse audio-manifest.json from classpath location {}: {}", loc, ex.getMessage());
                         return null;
@@ -312,7 +435,12 @@ public class AudioManifestService {
             }
         }
 
-        // 2. Filesystem probes
+        // In production mode without volume, only classpath is allowed, never developer source tree
+        if (productionMode) {
+            return null;
+        }
+
+        // 3. Filesystem probes (development only)
         String[] fsLocations = {
             "backend/src/main/resources/static/media/audio/curated/audio-manifest.json",
             "src/main/resources/static/media/audio/curated/audio-manifest.json",
@@ -324,7 +452,10 @@ public class AudioManifestService {
             File f = new File(path);
             if (f.exists() && f.length() > 0) {
                 try {
-                    return objectMapper.readTree(f);
+                    byte[] bytes = java.nio.file.Files.readAllBytes(f.toPath());
+                    this.manifestSha256 = calculateSha256(bytes);
+                    this.boundCuratedDir = f.getParentFile().getCanonicalFile();
+                    return objectMapper.readTree(bytes);
                 } catch (Exception ex) {
                     log.error("Failed to parse audio-manifest.json from file location {}: {}", path, ex.getMessage());
                     return null;
@@ -359,6 +490,40 @@ public class AudioManifestService {
         this.strictStartupCheck = strictStartupCheck;
     }
 
+    public String getStorageRoot() {
+        return storageRoot;
+    }
+
+    public void setStorageRoot(String storageRoot) {
+        this.storageRoot = storageRoot;
+    }
+
+    public File getBoundCuratedDir() {
+        return boundCuratedDir;
+    }
+
+    public String getReleaseTag() {
+        return releaseTag;
+    }
+
+    public String getManifestSha256() {
+        return manifestSha256;
+    }
+
+    public String getLoadedAt() {
+        return loadedAt;
+    }
+
+    private static String calculateSha256(byte[] data) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(data);
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (Exception ex) {
+            return "";
+        }
+    }
+
     public Map<UUID, AudioManifestAsset> getAssets() {
         return Collections.unmodifiableMap(assetsByContentId);
     }
@@ -367,6 +532,123 @@ public class AudioManifestService {
         assetsByContentId.clear();
         assetsByStorageKey.clear();
         assetsByFileName.clear();
+        this.verifiedShaCache.clear();
         this.topLevelMode = "MISSING";
+        this.releaseTag = "MISSING";
+        this.manifestSha256 = null;
+        this.boundCuratedDir = null;
+    }
+
+    public boolean verifyAssetSha256(AudioManifestAsset asset) {
+        if (asset == null || asset.sha256() == null || asset.sha256().isBlank()) {
+            return false;
+        }
+        String cacheKey = asset.fileName();
+        if (Boolean.TRUE.equals(verifiedShaCache.get(cacheKey))) {
+            return true;
+        }
+
+        String calculatedSha = calculateAssetSha256(asset.fileName());
+        if (calculatedSha == null) {
+            log.warn("verifyAssetSha256: Could not calculate SHA-256 for file '{}' (file missing or unreadable)", asset.fileName());
+            return false;
+        }
+
+        boolean matches = asset.sha256().trim().equalsIgnoreCase(calculatedSha);
+        if (matches) {
+            verifiedShaCache.put(cacheKey, true);
+            return true;
+        } else {
+            log.error("verifyAssetSha256: Hash mismatch for '{}'! Expected: {}, Found: {}",
+                asset.fileName(), asset.sha256().trim().toLowerCase(), calculatedSha);
+            return false;
+        }
+    }
+
+    public String calculateAssetSha256(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return null;
+        }
+
+        // 1. Storage root / bound curated directory
+        if (boundCuratedDir != null && boundCuratedDir.exists()) {
+            File f = new File(boundCuratedDir, fileName);
+            if (f.exists() && f.isFile()) {
+                return hashFile(f);
+            }
+            if (productionMode) {
+                return null;
+            }
+        } else if (storageRoot != null && !storageRoot.isBlank()) {
+            File f = new File(storageRoot, "curated/" + fileName);
+            if (f.exists() && f.isFile()) {
+                return hashFile(f);
+            }
+            if (productionMode) {
+                return null;
+            }
+        }
+
+        // 2. Classpath check
+        try {
+            Resource res = resourceLoader.getResource("classpath:/static/media/audio/curated/" + fileName);
+            if (res.exists() && res.isReadable()) {
+                try (InputStream is = res.getInputStream()) {
+                    return hashInputStream(is);
+                }
+            }
+            Resource altRes = resourceLoader.getResource("classpath:/audio/" + fileName);
+            if (altRes.exists() && altRes.isReadable()) {
+                try (InputStream is = altRes.getInputStream()) {
+                    return hashInputStream(is);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (productionMode) {
+            return null;
+        }
+
+        // 3. Dev filesystem probe
+        String[] probePaths = {
+            "backend/src/main/resources/static/media/audio/curated/" + fileName,
+            "src/main/resources/static/media/audio/curated/" + fileName,
+            "frontend/public/media/audio/curated/" + fileName,
+            "../backend/src/main/resources/static/media/audio/curated/" + fileName,
+            "../frontend/public/media/audio/curated/" + fileName
+        };
+        for (String probe : probePaths) {
+            File f = new File(probe);
+            if (f.exists() && f.isFile()) {
+                return hashFile(f);
+            }
+        }
+
+        return null;
+    }
+
+    private String hashFile(File file) {
+        try (InputStream is = Files.newInputStream(file.toPath())) {
+            return hashInputStream(is);
+        } catch (Exception ex) {
+            log.error("Failed to hash file {}: {}", file.getAbsolutePath(), ex.getMessage());
+            return null;
+        }
+    }
+
+    private String hashInputStream(InputStream is) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[8192];
+            int read;
+            while ((read = is.read(buf)) != -1) {
+                md.update(buf, 0, read);
+            }
+            return HexFormat.of().formatHex(md.digest());
+        } catch (Exception ex) {
+            log.error("Failed to calculate SHA-256 on stream: {}", ex.getMessage());
+            return null;
+        }
     }
 }

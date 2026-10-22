@@ -111,6 +111,7 @@
                     <exclude>static/media/audio/curated/*.wav</exclude>
                     <exclude>static/media/audio/curated/*.mp3</exclude>
                     <exclude>static/media/audio/curated/*.ogg</exclude>
+                    <exclude>static/media/audio/curated/*.m4a</exclude>
                     <exclude>static/media/audio/staging/**</exclude>
                 </excludes>
             </resource>

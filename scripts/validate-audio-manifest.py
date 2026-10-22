@@ -103,7 +103,7 @@ def inspect_audio_file(filepath, mime_type):
     return True, None, None
 
 
-def validate_manifest(manifest_path, audio_dir=None, catalog_path=None, production_mode=False):
+def validate_manifest(manifest_path, audio_dir=None, catalog_path=None, dossier_dir=None, production_mode=False):
     errors = []
     warnings = []
 
@@ -291,6 +291,47 @@ def validate_manifest(manifest_path, audio_dir=None, catalog_path=None, producti
                 if not os.path.exists(ref_path):
                     errors.append(f"{prefix}[PROD GATE] License evidence file does not exist: '{ref_path}'")
 
+    # 12. Licensing Dossiers validation (if dossier_dir provided or present)
+    if dossier_dir and os.path.isdir(dossier_dir):
+        schema_path = os.path.join(os.path.dirname(dossier_dir), "dossier.schema.json")
+        schema = None
+        if os.path.exists(schema_path):
+            try:
+                import jsonschema
+                with open(schema_path, "r", encoding="utf-8") as sf:
+                    schema = json.load(sf)
+            except Exception as ex:
+                warnings.append(f"Could not load dossier schema for validation: {ex}")
+
+        for cid, cat_item in canonical_exercises.items():
+            dossier_path = os.path.join(dossier_dir, f"{cid}.json")
+            if not os.path.exists(dossier_path):
+                errors.append(f"Missing licensing dossier for catalog item {cid} ({cat_item.get('title')}) at '{dossier_path}'")
+                continue
+
+            try:
+                with open(dossier_path, "r", encoding="utf-8") as df:
+                    dossier = json.load(df)
+
+                if schema:
+                    import jsonschema
+                    jsonschema.validate(instance=dossier, schema=schema)
+
+                if dossier.get("transcriptSha256") != cat_item.get("transcriptSha256"):
+                    errors.append(f"Dossier {cid} transcriptSha256 does not match canonical catalog")
+
+                if production_mode:
+                    if not dossier.get("distributionApproved", False):
+                        errors.append(f"Dossier {cid} [PROD GATE] distributionApproved is False")
+                    if not dossier.get("humanQaVerified", False):
+                        errors.append(f"Dossier {cid} [PROD GATE] humanQaVerified is False")
+                    if dossier.get("licenseReviewStatus") != "APPROVED":
+                        errors.append(f"Dossier {cid} [PROD GATE] licenseReviewStatus is '{dossier.get('licenseReviewStatus')}', not APPROVED")
+                    if dossier.get("audioReadinessStatus") != "LICENSED_DISTRIBUTABLE":
+                        errors.append(f"Dossier {cid} [PROD GATE] audioReadinessStatus is '{dossier.get('audioReadinessStatus')}', not LICENSED_DISTRIBUTABLE")
+            except Exception as ex:
+                errors.append(f"Dossier {cid} schema/parsing error: {ex}")
+
     is_valid = len(errors) == 0
     return is_valid, errors, warnings
 
@@ -303,6 +344,8 @@ def main():
                         help="Path to audio assets directory (defaults to manifest directory)")
     parser.add_argument("--catalog", default="content/canonical-curated-catalog.json",
                         help="Path to canonical curated catalog JSON")
+    parser.add_argument("--dossiers-dir", default="docs/licensing/dossiers",
+                        help="Path to licensing dossiers directory")
     parser.add_argument("--production", action="store_true",
                         help="Enforce strict production readiness rules")
 
@@ -310,14 +353,16 @@ def main():
 
     print("==============================================================================")
     print("EnglishFlow — Audio Manifest Offline Validation")
-    print(f"Manifest: {args.manifest}")
-    print(f"Mode: {'STRICT PRODUCTION' if args.production else 'DEVELOPMENT / INTEGRITY'}")
+    print(f"Manifest:     {args.manifest}")
+    print(f"Dossiers:     {args.dossiers_dir}")
+    print(f"Mode:         {'STRICT PRODUCTION' if args.production else 'DEVELOPMENT / INTEGRITY'}")
     print("==============================================================================")
 
     is_valid, errors, warnings = validate_manifest(
         manifest_path=args.manifest,
         audio_dir=args.audio_dir,
         catalog_path=args.catalog,
+        dossier_dir=args.dossiers_dir,
         production_mode=args.production
     )
 

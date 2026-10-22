@@ -54,6 +54,8 @@ management:
 
 englishflow:
   media:
-    production-mode: ${ENGLISHFLOW_PRODUCTION_MODE:false}
+    storage-root: ${ENGLISHFLOW_MEDIA_STORAGE_ROOT:}
+    production-mode: ${ENGLISHFLOW_PRODUCTION_MODE:}
+    developer-mode: ${ENGLISHFLOW_DEVELOPER_MODE:false}
     strict-startup-check: ${ENGLISHFLOW_STRICT_AUDIO_CHECK:false}
 

@@ -53,7 +53,29 @@ public class AudioMediaSecurityInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // 4. Production gate: reject unapproved / synthetic / local macOS dev audio
+        // 4. Canonical path and symlink escape guard (when storage-root is configured)
+        String storageRoot = audioManifestService.getStorageRoot();
+        java.io.File boundDir = audioManifestService.getBoundCuratedDir();
+        java.io.File rootDir = null;
+        if (storageRoot != null && !storageRoot.isBlank()) {
+            try {
+                rootDir = new java.io.File(storageRoot).getCanonicalFile();
+                java.io.File targetFile = (boundDir != null && boundDir.exists())
+                    ? new java.io.File(boundDir, fileName).getCanonicalFile()
+                    : new java.io.File(rootDir, "curated/" + fileName).getCanonicalFile();
+                if (targetFile.exists()) {
+                    if (!targetFile.toPath().startsWith(rootDir.toPath())) {
+                        writeError(response, HttpStatus.FORBIDDEN, "SYMLINK_ESCAPE_DETECTED", "Symlink escapes configured media storage root");
+                        return false;
+                    }
+                }
+            } catch (IOException ex) {
+                writeError(response, HttpStatus.BAD_REQUEST, "INVALID_MEDIA_PATH", "Failed to resolve canonical path");
+                return false;
+            }
+        }
+
+        // 5. Production gate: reject unapproved / synthetic / local macOS dev audio
         if (audioManifestService.isProductionMode()) {
             Optional<AudioManifestAsset> assetOpt = audioManifestService.getAssetByStorageKey(uri);
             if (assetOpt.isEmpty()) {
@@ -68,6 +90,33 @@ public class AudioMediaSecurityInterceptor implements HandlerInterceptor {
                     HttpStatus.FORBIDDEN,
                     "AUDIO_UNAPPROVED_FOR_PRODUCTION",
                     "Audio asset '" + fileName + "' is not approved for production distribution (readiness=" + asset.readinessStatus() + ")"
+                );
+                return false;
+            }
+
+            // Integrity check: verify file length matches manifest
+            java.io.File targetFile = (boundDir != null && boundDir.exists())
+                ? new java.io.File(boundDir, fileName)
+                : (rootDir != null ? new java.io.File(rootDir, "curated/" + fileName) : null);
+            if (targetFile != null && targetFile.exists() && asset.fileSizeBytes() != null && asset.fileSizeBytes() > 0) {
+                if (targetFile.length() != asset.fileSizeBytes()) {
+                    writeError(
+                        response,
+                        HttpStatus.FORBIDDEN,
+                        "MEDIA_INTEGRITY_COMPROMISED",
+                        "Audio asset file size mismatch against manifest"
+                    );
+                    return false;
+                }
+            }
+
+            // Cryptographic integrity check: verify SHA-256 digest against manifest
+            if (!audioManifestService.verifyAssetSha256(asset)) {
+                writeError(
+                    response,
+                    HttpStatus.FORBIDDEN,
+                    "MEDIA_INTEGRITY_COMPROMISED",
+                    "Audio asset cryptographic SHA-256 mismatch against manifest"
                 );
                 return false;
             }

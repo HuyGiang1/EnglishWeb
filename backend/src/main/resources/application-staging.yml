@@ -1,0 +1,13 @@
+# EnglishFlow Spring Boot Staging Profile
+# Active when SPRING_PROFILES_ACTIVE=staging or stage
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+englishflow:
+  media:
+    production-mode: true
+    developer-mode: false
+    strict-startup-check: ${ENGLISHFLOW_STRICT_AUDIO_CHECK:false}

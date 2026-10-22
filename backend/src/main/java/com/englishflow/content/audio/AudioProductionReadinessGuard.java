@@ -36,6 +36,27 @@ public class AudioProductionReadinessGuard implements ApplicationListener<Applic
 
         log.info("AudioProductionReadinessGuard: Running in PRODUCTION mode. Enforcing strict licensing and QA gates.");
 
+        // 1. Verify cryptographic SHA-256 integrity for every approved runtime asset in the manifest
+        List<String> corruptedApprovedAssets = new ArrayList<>();
+        for (AudioManifestAsset asset : audioManifestService.getAssets().values()) {
+            if (asset.isApprovedForProduction()) {
+                if (!audioManifestService.verifyAssetSha256(asset)) {
+                    corruptedApprovedAssets.add(String.format("Asset '%s' (storageKey=%s, expectedSha256=%s)",
+                        asset.fileName(), asset.storageKey(), asset.sha256()));
+                }
+            }
+        }
+
+        if (!corruptedApprovedAssets.isEmpty()) {
+            String corruptionSummary = String.format(
+                "CRITICAL INTEGRITY FAILURE: %d approved production asset(s) failed cryptographic SHA-256 verification on disk:\n - %s",
+                corruptedApprovedAssets.size(), String.join("\n - ", corruptedApprovedAssets)
+            );
+            log.error(corruptionSummary);
+            throw new IllegalStateException("Production startup aborted: Approved asset SHA-256 integrity validation failure on runtime media volume.\n" + corruptionSummary);
+        }
+
+        // 2. Validate published learning content against approved audio assets
         List<LearningContent> publishedAudioContents = learningContentRepository.findAll().stream()
             .filter(LearningContent::isPublished)
             .filter(c -> c.getAudioStorageKey() != null && !c.getAudioStorageKey().isBlank())

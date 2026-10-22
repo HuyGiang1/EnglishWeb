@@ -97,6 +97,7 @@ out/
 Thumbs.db
 ehthumbs.db
 desktop.ini
+scratch/
 
 # ==============================================================================
 # 5. Testing, Coverage & Quality Reports
