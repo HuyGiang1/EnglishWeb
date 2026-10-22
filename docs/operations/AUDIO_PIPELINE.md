@@ -403,3 +403,69 @@ Public documentation for AWS Polly Neural verifies the proposed voice assignment
 - `Matthew`: US English (`en-US`), Male, Neural engine supported, native MP3 24 kHz output.
 - Output formats: Native `audio/mpeg` (MP3) at 24000 Hz eliminates the need for PCM WAV container wrappers.
 - All provider assignments remain proposals in unapproved dossiers. No AWS API calls (`DescribeVoices` or `SynthesizeSpeech`) have been executed, and zero cloud expenses have been incurred.
+
+---
+
+## 12. M3-T01B-2B AWS Polly Offline Adapter & Pilot Readiness
+
+### 12.1 Overview & Architecture
+To prepare EnglishFlow for generating its first authorized speech assets without coupling the Spring Boot runtime to cloud vendor SDKs, a standalone Python offline synthesis adapter is implemented at `scripts/adapters/synthesize_polly.py`.
+
+Key architectural principles:
+1. **Decoupled from Spring Boot**: Spring Boot contains zero AWS SDK dependencies. Media generation remains strictly an offline build-time/content-ops activity.
+2. **Optional Dependency Isolation**: `boto3` is strictly an optional adapter-only dependency. Dry-run mode, catalog validation, cost calculation, and unit tests execute completely without `boto3` installed.
+3. **Fail-Closed Paid API Safety Gate**: Execution defaults to safe dry-run mode. Live synthesis requires BOTH `--execute` and `--confirm-paid-execution "I_AGREE_TO_PAY_AWS_POLLY"`.
+4. **Idempotency Protection**: Target audio files on disk are protected against accidental overwriting. Re-synthesis requires `--force-overwrite`.
+5. **Atomic Output Verification**: Synthesized bytes are written to a `.tmp` file, validated structurally and cryptographically via `media_inspector.py`, and atomically renamed to the target filename.
+6. **Provisional Dossier Generation**: Generated metadata initializes with `distributionApproved: false`, `humanQaVerified: false`, and `audioReadinessStatus: PENDING_HUMAN_QA`.
+
+### 12.2 Version-Controlled Voice Strategies (`content/proposed-voice-config.json`)
+Voice mappings are managed in a standalone, version-controlled JSON configuration separate from canonical transcript catalogs:
+
+* **Strategy A (Consistent en-US MVP)**:
+  - Voices: `Joanna` (Female, en-US, Neural) and `Matthew` (Male, en-US, Neural).
+  - Purpose: Provides acoustic consistency and simple baseline evaluation across all 10 exercises.
+* **Strategy B (Multi-Accent Curriculum)**:
+  - Voices: `Joanna` / `Matthew` (en-US), `Amy` / `Brian` / `Emma` (en-GB), `Olivia` / `Russell` (en-AU).
+  - Purpose: Provides exposure to major international native English accents across CEFR levels.
+
+Both strategies assign **`Joanna` (`en-US`, Neural, 24 kHz)** to **Dictation A1** for the initial single-sample pilot.
+
+### 12.3 Character Budget Policy & Pricing Preflight
+- **AWS Polly Neural Pricing**: $16.00 USD per 1,000,000 characters.
+- **Pilot Scope (Dictation A1)**: 50 characters -> **$0.000800 USD** (< 0.1 cent).
+- **Full Scope (All 10 Exercises)**: 650 characters -> **$0.010400 USD** (~1.04 cents).
+- **Safety Preflight**: The adapter enforces `--max-chars` (default: 500 chars per exercise) and aborts execution before making any API call if the transcript exceeds the budget.
+
+### 12.4 CLI Usage & Safety Gates
+
+```bash
+# 1. Pilot Dry-Run Preview (Dictation A1 — Joanna, en-US, Neural):
+python3 scripts/adapters/synthesize_polly.py --pilot
+
+# 2. Specific Exercise Dry-Run Preview:
+python3 scripts/adapters/synthesize_polly.py --content-id a2000000-0000-0000-0000-000000000002
+
+# 3. Multi-Accent Strategy Dry-Run Preview:
+python3 scripts/adapters/synthesize_polly.py --content-id a2000000-0000-0000-0000-000000000002 --strategy STRATEGY_B_MULTI_ACCENT
+
+# 4. Live Synthesis Execution (Requires User Authorization & Token):
+python3 scripts/adapters/synthesize_polly.py \
+  --pilot \
+  --execute \
+  --confirm-paid-execution "I_AGREE_TO_PAY_AWS_POLLY"
+```
+
+### 12.5 Pilot QA & Physical Ear Review Checklist
+When the pilot asset (`dictation-a1-001.mp3`) is synthesized in the future:
+1. **Container Verification**: `media_inspector.py` confirms MPEG-2 Layer III, 24000 Hz, mono, valid MP3 frames.
+2. **Hash Agreement**: Cryptographic SHA-256 digest is calculated and cross-referenced.
+3. **Auditory Listening Test**:
+   - Natural pronunciation and inflection of "I drink a cup of coffee every morning before work."
+   - Absence of clipping, metallic distortion, or robotic artifacts.
+   - Appropriate cadence and pacing for CEFR A1 learners.
+4. **Licensing Sign-Off**: Product owner signs off on commercial distribution terms.
+5. **Manifest & Dossier Update**: Asset is registered via `scripts/ingest-audio.py`.
+
+### 12.6 Troubleshooting & Sanitized Error Streams
+All AWS error messages are passed through `sanitize_text()`. Sensitive credentials matching `AKIA...` or secret key patterns are automatically masked as `[REDACTED_AWS_ACCESS_KEY]` and `[REDACTED_SECRET]`, ensuring zero secrets leak into logs or build outputs.

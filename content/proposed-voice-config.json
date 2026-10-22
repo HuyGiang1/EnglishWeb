@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0.0",
+  "updatedAt": "2026-10-22T19:30:00Z",
+  "description": "Proposed voice mapping strategies for EnglishFlow AWS Polly speech synthesis. Requires user authorization prior to activation.",
+  "pilotContentId": "a1000000-0000-0000-0000-000000000001",
+  "defaultStrategy": "STRATEGY_A_EN_US_MVP",
+  "strategies": {
+    "STRATEGY_A_EN_US_MVP": {
+      "strategyName": "Consistent en-US MVP Voice Strategy",
+      "description": "Uses consistent US English voices (Joanna and Matthew) across all 10 exercises for initial acoustic stability and simple evaluation.",
+      "voices": {
+        "a1000000-0000-0000-0000-000000000001": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "a2000000-0000-0000-0000-000000000002": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b1000000-0000-0000-0000-000000000015": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b2000000-0000-0000-0000-000000000042": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "c1000000-0000-0000-0000-000000000088": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "a1000000-0000-0000-0001-000000000001": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "a2000000-0000-0000-0001-000000000002": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b1000000-0000-0000-0001-000000000015": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b2000000-0000-0000-0001-000000000042": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "c1000000-0000-0000-0001-000000000088": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        }
+      }
+    },
+    "STRATEGY_B_MULTI_ACCENT": {
+      "strategyName": "Multi-Accent Curriculum Strategy (en-US, en-GB, en-AU)",
+      "description": "Provides natural exposure to major international native English accents across CEFR levels using AWS Polly Neural voices genuinely supported in each locale.",
+      "voices": {
+        "a1000000-0000-0000-0000-000000000001": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "a2000000-0000-0000-0000-000000000002": {
+          "voiceId": "Amy",
+          "engine": "neural",
+          "accent": "en-GB",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "b1000000-0000-0000-0000-000000000015": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b2000000-0000-0000-0000-000000000042": {
+          "voiceId": "Olivia",
+          "engine": "neural",
+          "accent": "en-AU",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "c1000000-0000-0000-0000-000000000088": {
+          "voiceId": "Brian",
+          "engine": "neural",
+          "accent": "en-GB",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "a1000000-0000-0000-0001-000000000001": {
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "a2000000-0000-0000-0001-000000000002": {
+          "voiceId": "Brian",
+          "engine": "neural",
+          "accent": "en-GB",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b1000000-0000-0000-0001-000000000015": {
+          "voiceId": "Russell",
+          "engine": "neural",
+          "accent": "en-AU",
+          "gender": "Male",
+          "sampleRate": "24000"
+        },
+        "b2000000-0000-0000-0001-000000000042": {
+          "voiceId": "Emma",
+          "engine": "neural",
+          "accent": "en-GB",
+          "gender": "Female",
+          "sampleRate": "24000"
+        },
+        "c1000000-0000-0000-0001-000000000088": {
+          "voiceId": "Matthew",
+          "engine": "neural",
+          "accent": "en-US",
+          "gender": "Male",
+          "sampleRate": "24000"
+        }
+      }
+    }
+  }
+}
