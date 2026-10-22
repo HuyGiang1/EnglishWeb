@@ -20,6 +20,11 @@ import re
 import sys
 import wave
 
+try:
+    from media_inspector import inspect_audio_file as inspect_audio_media, compute_file_sha256 as compute_sha256_media
+except ImportError:
+    from scripts.media_inspector import inspect_audio_file as inspect_audio_media, compute_file_sha256 as compute_sha256_media
+
 SUPPORTED_MIME_EXTENSIONS = {
     "audio/wav": [".wav"],
     "audio/x-wav": [".wav"],
@@ -57,50 +62,16 @@ DISALLOWED_PRODUCTION_STATUSES = {
 
 
 def compute_file_sha256(filepath):
-    hasher = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        while chunk := f.read(65536):
-            hasher.update(chunk)
-    return hasher.hexdigest()
+    return compute_sha256_media(filepath)
 
 
-def inspect_audio_file(filepath, mime_type):
+def inspect_audio_file(filepath, mime_type=None):
     """
     Inspects actual file bytes to verify format integrity and compute duration.
     Returns (is_valid, duration_seconds, error_message).
     """
-    ext = os.path.splitext(filepath)[1].lower()
-
-    if ext == ".wav":
-        try:
-            with wave.open(filepath, "rb") as w:
-                channels = w.getnchannels()
-                sample_width = w.getsampwidth()
-                framerate = w.getframerate()
-                frames = w.getnframes()
-                if framerate <= 0:
-                    return False, 0.0, "WAV framerate must be positive"
-                duration = round(frames / float(framerate), 2)
-                return True, duration, None
-        except Exception as e:
-            return False, 0.0, f"Malformed WAV container: {e}"
-
-    elif ext == ".mp3":
-        # Basic MP3 frame header validation (ID3 or MPEG frame sync 0xFFE0 / 0xFFF0)
-        try:
-            with open(filepath, "rb") as f:
-                header = f.read(10)
-                if len(header) < 4:
-                    return False, 0.0, "File too small to be valid MP3"
-                if header[:3] == b"ID3":
-                    return True, None, None  # Has valid ID3 tag
-                if header[0] == 0xFF and (header[1] & 0xE0) == 0xE0:
-                    return True, None, None  # Valid MPEG frame sync
-                return False, 0.0, "File does not start with valid ID3 tag or MPEG sync word"
-        except Exception as e:
-            return False, 0.0, f"Malformed MP3 container: {e}"
-
-    return True, None, None
+    is_valid, duration, meta, err = inspect_audio_media(filepath, mime_type)
+    return is_valid, duration, err
 
 
 def validate_manifest(manifest_path, audio_dir=None, catalog_path=None, dossier_dir=None, production_mode=False):

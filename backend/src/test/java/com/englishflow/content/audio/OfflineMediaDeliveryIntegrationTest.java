@@ -733,4 +733,188 @@ class OfflineMediaDeliveryIntegrationTest {
             .hasMessageContaining("CRITICAL INTEGRITY FAILURE")
             .hasMessageContaining("fixture-readiness-check.wav");
     }
+
+    private byte[] createDummyMp3Bytes(int frames) {
+        int frameSize = 417; // 128 kbps 44.1 kHz stereo frame
+        byte[] mp3 = new byte[frames * frameSize];
+        for (int i = 0; i < frames; i++) {
+            int offset = i * frameSize;
+            mp3[offset] = (byte) 0xFF;
+            mp3[offset + 1] = (byte) 0xFB;
+            mp3[offset + 2] = (byte) 0x90;
+            mp3[offset + 3] = (byte) 0x64;
+        }
+        return mp3;
+    }
+
+    @Test
+    @DisplayName("Case U: Approved production MP3 asset served with audio/mpeg MIME and MP3 bitstream signature")
+    void testApprovedMp3FixtureServedWithAudioMpegMimeAndMp3Signature() throws Exception {
+        File curatedDir = new File(tempStorageVolume.toFile(), "curated");
+        curatedDir.mkdirs();
+
+        byte[] mp3Bytes = createDummyMp3Bytes(10);
+        File audioFile = new File(curatedDir, "fixture-approved.mp3");
+        try (FileOutputStream fos = new FileOutputStream(audioFile)) {
+            fos.write(mp3Bytes);
+        }
+        String audioSha = sha256Hex(mp3Bytes);
+        UUID contentId = UUID.fromString("a1000000-0000-0000-0000-000000000001");
+        String transcriptSha = "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd";
+
+        String manifestJson = String.format("""
+            {
+              "manifestVersion": "2.0.0",
+              "mode": "LICENSED_DISTRIBUTABLE",
+              "releaseTag": "v1.0.0-mp3",
+              "assets": {
+                "%s": {
+                  "contentType": "DICTATION",
+                  "title": "Daily Routine",
+                  "storageKey": "/api/v1/media/audio/curated/fixture-approved.mp3",
+                  "fileName": "fixture-approved.mp3",
+                  "sha256": "%s",
+                  "mimeType": "audio/mpeg",
+                  "fileSizeBytes": %d,
+                  "durationSeconds": 2.61,
+                  "transcriptSha256": "%s",
+                  "accent": "en-US",
+                  "provider": "TEST_MP3_STUB",
+                  "voiceId": "StubVoice",
+                  "provenance": "TEST_CONTAINER_FIXTURE",
+                  "licenseEvidenceRef": "docs/licensing/TEST_FIXTURE_LICENSE.md",
+                  "distributionApproved": true,
+                  "humanQaVerified": true,
+                  "reviewedAt": "2026-10-17T09:00:00Z",
+                  "readinessStatus": "LICENSED_DISTRIBUTABLE"
+                }
+              }
+            }
+            """, contentId, audioSha, mp3Bytes.length, transcriptSha);
+
+        File manifestFile = new File(curatedDir, "audio-manifest.json");
+        Files.writeString(manifestFile.toPath(), manifestJson);
+
+        audioManifestService.setStorageRoot(tempStorageVolume.toAbsolutePath().toString());
+        audioManifestService.setProductionMode(true);
+        audioManifestService.reload();
+
+        // 1. Full GET returns 200 OK with audio/mpeg and MP3 sync bytes
+        byte[] responseBytes = mockMvc.perform(get("/api/v1/media/audio/curated/fixture-approved.mp3"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", is("audio/mpeg")))
+            .andExpect(header().string("Content-Length", is(String.valueOf(mp3Bytes.length))))
+            .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(responseBytes).hasSize(mp3Bytes.length);
+        // Verify MP3 frame sync word 0xFF 0xFB
+        assertThat(responseBytes[0]).isEqualTo((byte) 0xFF);
+        assertThat(responseBytes[1]).isEqualTo((byte) 0xFB);
+
+        // 2. HEAD request returns same metadata without body
+        mockMvc.perform(head("/api/v1/media/audio/curated/fixture-approved.mp3"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", is("audio/mpeg")))
+            .andExpect(header().string("Content-Length", is(String.valueOf(mp3Bytes.length))));
+
+        // 3. HTTP Range partial content request returns 206 Partial Content
+        byte[] rangeBytes = mockMvc.perform(get("/api/v1/media/audio/curated/fixture-approved.mp3")
+                .header("Range", "bytes=0-15"))
+            .andExpect(status().is(206))
+            .andExpect(header().string("Content-Type", is("audio/mpeg")))
+            .andExpect(header().string("Content-Length", is("16")))
+            .andExpect(header().string("Content-Range", is("bytes 0-15/" + mp3Bytes.length)))
+            .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(rangeBytes).hasSize(16);
+        assertThat(rangeBytes[0]).isEqualTo((byte) 0xFF);
+        assertThat(rangeBytes[1]).isEqualTo((byte) 0xFB);
+    }
+
+    @Test
+    @DisplayName("Case V: Legacy WAV request explicitly redirects to approved MP3 without silent body substitution")
+    void testWavRequestRedirectsToApprovedMp3WithoutSilentBodySubstitution() throws Exception {
+        File curatedDir = new File(tempStorageVolume.toFile(), "curated");
+        curatedDir.mkdirs();
+
+        byte[] mp3Bytes = createDummyMp3Bytes(5);
+        File audioFile = new File(curatedDir, "fixture-approved.mp3");
+        try (FileOutputStream fos = new FileOutputStream(audioFile)) {
+            fos.write(mp3Bytes);
+        }
+        String audioSha = sha256Hex(mp3Bytes);
+        UUID contentId = UUID.fromString("a1000000-0000-0000-0000-000000000001");
+        String transcriptSha = "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd";
+
+        String manifestJson = String.format("""
+            {
+              "manifestVersion": "2.0.0",
+              "mode": "LICENSED_DISTRIBUTABLE",
+              "releaseTag": "v1.0.0-mp3",
+              "assets": {
+                "%s": {
+                  "contentType": "DICTATION",
+                  "title": "Daily Routine",
+                  "storageKey": "/api/v1/media/audio/curated/fixture-approved.mp3",
+                  "fileName": "fixture-approved.mp3",
+                  "sha256": "%s",
+                  "mimeType": "audio/mpeg",
+                  "fileSizeBytes": %d,
+                  "durationSeconds": 1.30,
+                  "transcriptSha256": "%s",
+                  "accent": "en-US",
+                  "provider": "TEST_MP3_STUB",
+                  "voiceId": "StubVoice",
+                  "provenance": "TEST_CONTAINER_FIXTURE",
+                  "licenseEvidenceRef": "docs/licensing/TEST_FIXTURE_LICENSE.md",
+                  "distributionApproved": true,
+                  "humanQaVerified": true,
+                  "reviewedAt": "2026-10-17T09:00:00Z",
+                  "readinessStatus": "LICENSED_DISTRIBUTABLE"
+                }
+              }
+            }
+            """, contentId, audioSha, mp3Bytes.length, transcriptSha);
+
+        File manifestFile = new File(curatedDir, "audio-manifest.json");
+        Files.writeString(manifestFile.toPath(), manifestJson);
+
+        audioManifestService.setStorageRoot(tempStorageVolume.toAbsolutePath().toString());
+        audioManifestService.setProductionMode(true);
+        audioManifestService.reload();
+
+        // GET for .wav yields explicit 307 redirect to .mp3, NEVER silent MP3 bytes under .wav
+        mockMvc.perform(get("/api/v1/media/audio/curated/fixture-approved.wav"))
+            .andExpect(status().isTemporaryRedirect())
+            .andExpect(header().string("Location", is("/api/v1/media/audio/curated/fixture-approved.mp3")));
+
+        // HEAD for .wav yields identical 307 redirect
+        mockMvc.perform(head("/api/v1/media/audio/curated/fixture-approved.wav"))
+            .andExpect(status().isTemporaryRedirect())
+            .andExpect(header().string("Location", is("/api/v1/media/audio/curated/fixture-approved.mp3")));
+    }
+
+    @Test
+    @DisplayName("Case W: Development WAV asset serves Content-Type audio/wav and RIFF WAVE magic header bytes")
+    void testDevWavAssetServesWavMimeAndRiffMagicBytes() throws Exception {
+        audioManifestService.setProductionMode(false);
+        audioManifestService.setStorageRoot(null);
+        audioManifestService.reload();
+
+        byte[] responseBytes = mockMvc.perform(get("/api/v1/media/audio/curated/dictation-b2-042.wav"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", org.hamcrest.Matchers.anyOf(containsString("audio/wav"), containsString("audio/x-wav"))))
+            .andReturn().getResponse().getContentAsByteArray();
+
+        // Verify RIFF and WAVE magic headers
+        assertThat(responseBytes.length).isGreaterThan(44);
+        assertThat(responseBytes[0]).isEqualTo((byte) 'R');
+        assertThat(responseBytes[1]).isEqualTo((byte) 'I');
+        assertThat(responseBytes[2]).isEqualTo((byte) 'F');
+        assertThat(responseBytes[3]).isEqualTo((byte) 'F');
+        assertThat(responseBytes[8]).isEqualTo((byte) 'W');
+        assertThat(responseBytes[9]).isEqualTo((byte) 'A');
+        assertThat(responseBytes[10]).isEqualTo((byte) 'V');
+        assertThat(responseBytes[11]).isEqualTo((byte) 'E');
+    }
 }

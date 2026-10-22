@@ -163,7 +163,25 @@ print('FIXTURE_SHA=' + sha)
 FIXTURE_SHA=$(grep FIXTURE_SHA /tmp/fixture-sha.txt | cut -d= -f2)
 FIXTURE_SIZE=$(wc -c < "${FIXTURE_PATH}" | tr -d ' ')
 
-# Write production release manifest approving only fixture-approved.wav
+# Generate 20-frame dummy MP3 fixture
+MP3_FIXTURE_PATH="${TMP_VOL}/curated/fixture-approved.mp3"
+python3 -c "
+import hashlib
+frame = b'\xFF\xFB\x90\x64' + (b'\x55' * 414)
+data = frame * 20
+with open('${MP3_FIXTURE_PATH}', 'wb') as f:
+    f.write(data)
+print('MP3_FIXTURE_SHA=' + hashlib.sha256(data).hexdigest())
+" > /tmp/mp3-fixture-sha.txt
+
+MP3_FIXTURE_SHA=$(grep MP3_FIXTURE_SHA /tmp/mp3-fixture-sha.txt | cut -d= -f2)
+MP3_FIXTURE_SIZE=$(wc -c < "${MP3_FIXTURE_PATH}" | tr -d ' ')
+
+# Also create an MP3-only fixture for testing explicit 307 redirect from .wav
+MP3_ONLY_PATH="${TMP_VOL}/curated/redirect-target.mp3"
+cp "${MP3_FIXTURE_PATH}" "${MP3_ONLY_PATH}"
+
+# Write production release manifest approving fixture-approved.wav, fixture-approved.mp3, and redirect-target.mp3
 cat <<EOF > "${TMP_VOL}/curated/audio-manifest.json"
 {
   "manifestVersion": "1.0.0",
@@ -171,12 +189,50 @@ cat <<EOF > "${TMP_VOL}/curated/audio-manifest.json"
   "assets": {
     "a1000000-0000-0000-0000-000000000001": {
       "contentType": "DICTATION",
-      "title": "Daily Routine",
+      "title": "Daily Routine WAV",
       "storageKey": "curated/fixture-approved.wav",
       "fileName": "fixture-approved.wav",
       "sha256": "${FIXTURE_SHA}",
       "mimeType": "audio/wav",
       "fileSizeBytes": ${FIXTURE_SIZE},
+      "transcriptSha256": "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd",
+      "accent": "en-US",
+      "provider": "TEST_APPROVED_STUB",
+      "voiceId": "StubVoice",
+      "provenance": "TEST_CONTAINER_FIXTURE",
+      "licenseEvidenceRef": "docs/licensing/TEST_FIXTURE_LICENSE.md",
+      "distributionApproved": true,
+      "humanQaVerified": true,
+      "reviewedAt": "2026-10-22T00:00:00Z",
+      "readinessStatus": "LICENSED_DISTRIBUTABLE"
+    },
+    "a1000000-0000-0000-0000-000000000002": {
+      "contentType": "DICTATION",
+      "title": "Daily Routine MP3",
+      "storageKey": "curated/fixture-approved.mp3",
+      "fileName": "fixture-approved.mp3",
+      "sha256": "${MP3_FIXTURE_SHA}",
+      "mimeType": "audio/mpeg",
+      "fileSizeBytes": ${MP3_FIXTURE_SIZE},
+      "transcriptSha256": "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd",
+      "accent": "en-US",
+      "provider": "TEST_APPROVED_STUB",
+      "voiceId": "StubVoice",
+      "provenance": "TEST_CONTAINER_FIXTURE",
+      "licenseEvidenceRef": "docs/licensing/TEST_FIXTURE_LICENSE.md",
+      "distributionApproved": true,
+      "humanQaVerified": true,
+      "reviewedAt": "2026-10-22T00:00:00Z",
+      "readinessStatus": "LICENSED_DISTRIBUTABLE"
+    },
+    "a1000000-0000-0000-0000-000000000003": {
+      "contentType": "DICTATION",
+      "title": "Redirect Target MP3",
+      "storageKey": "curated/redirect-target.mp3",
+      "fileName": "redirect-target.mp3",
+      "sha256": "${MP3_FIXTURE_SHA}",
+      "mimeType": "audio/mpeg",
+      "fileSizeBytes": ${MP3_FIXTURE_SIZE},
       "transcriptSha256": "0f1ba802b4ddbcf89dd65de2840845f5cc028a7cd21813c1a495d8834366b9bd",
       "accent": "en-US",
       "provider": "TEST_APPROVED_STUB",
@@ -276,6 +332,18 @@ echo "[Test 2.7] Unrelated module health check in production mode:"
 STATUS_2_7=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${BACKEND_PORT}/actuator/health")
 echo "  GET /actuator/health -> HTTP ${STATUS_2_7}"
 [ "${STATUS_2_7}" = "200" ] || (echo "FAIL: Expected 200" && exit 1)
+
+echo "[Test 2.8] Production mode GET approved MP3 serves audio/mpeg MIME type:"
+MP3_CONTENT_TYPE=$(curl -s -I "http://localhost:${FRONTEND_PORT}/api/v1/media/audio/curated/fixture-approved.mp3" | grep -i "content-type" | tr -d '\r\n')
+echo "  Header: ${MP3_CONTENT_TYPE}"
+echo "${MP3_CONTENT_TYPE}" | grep -qi "audio/mpeg" || (echo "FAIL: Expected audio/mpeg" && exit 1)
+
+echo "[Test 2.9] Production mode WAV request explicitly redirects (307) to approved MP3 when WAV absent:"
+REDIRECT_RESP=$(curl -s -i "http://localhost:${FRONTEND_PORT}/api/v1/media/audio/curated/redirect-target.wav" | head -n 8)
+echo "  Redirect response:"
+echo "${REDIRECT_RESP}" | sed 's/^/    /'
+echo "${REDIRECT_RESP}" | grep -q "307" || (echo "FAIL: Expected HTTP 307 Temporary Redirect" && exit 1)
+echo "${REDIRECT_RESP}" | grep -qi "Location:.*redirect-target.mp3" || (echo "FAIL: Expected Location header pointing to MP3" && exit 1)
 
 echo ""
 echo "=============================================================================="

@@ -457,4 +457,31 @@ class ProductionAudioSafetyIntegrationTest {
         mockMvc.perform(withAuthAndCsrf(get("/api/v1/analytics/activity-heatmap")))
             .andExpect(status().isOk());
     }
+
+    @Test
+    @DisplayName("22. MP3 audio requests are supported by security interceptor and enforce production gate")
+    void testMp3ExtensionSupportedBySecurityInterceptor() throws Exception {
+        // In production mode, unapproved MP3 asset is rejected with 403/404 RFC 7807, never leaking raw internals
+        audioManifestService.setProductionMode(true);
+        mockMvc.perform(get("/api/v1/media/audio/curated/dictation-b2-042.mp3"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code", is("AUDIO_UNAPPROVED_FOR_PRODUCTION")));
+    }
+
+    @Test
+    @DisplayName("23. Alternate extension resolution safely resolves audio without mutating persistent keys")
+    void testAlternateExtensionResolutionSafety() {
+        // In dev mode: WAV exists on disk, so WAV resolves to itself
+        String resolvedWav = audioManifestService.resolveActiveAudioUrl("/api/v1/media/audio/curated/dictation-b2-042.wav");
+        assertThat(resolvedWav).isEqualTo("/api/v1/media/audio/curated/dictation-b2-042.wav");
+
+        // Nonexistent audio returns original key without breaking
+        String nonExistent = audioManifestService.resolveActiveAudioUrl("/api/v1/media/audio/curated/nonexistent.wav");
+        assertThat(nonExistent).isEqualTo("/api/v1/media/audio/curated/nonexistent.wav");
+
+        // Alternate extension helper
+        assertThat(AudioManifestService.getAlternateExtension("test.wav")).isEqualTo("test.mp3");
+        assertThat(AudioManifestService.getAlternateExtension("test.mp3")).isEqualTo("test.wav");
+        assertThat(AudioManifestService.getAlternateExtension("test.ogg")).isNull();
+    }
 }

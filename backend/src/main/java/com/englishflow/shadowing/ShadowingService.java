@@ -119,9 +119,10 @@ public class ShadowingService {
             long takeCount = shadowingTakeRepository.countByUserIdAndContentId(userId, content.getId());
             Optional<ShadowingTake> latestTake = shadowingTakeRepository.findFirstByUserIdAndContentIdOrderByCompletedAtDesc(userId, content.getId());
             String lastSelfRating = latestTake.map(ShadowingTake::getSelfRating).orElse(null);
-            String readiness = getAudioReadiness(content.getAudioStorageKey());
-            boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
-            boolean spoken = isSpokenSpeech(content.getAudioStorageKey());
+            String activeAudioUrl = audioManifestService.resolveActiveAudioUrl(content.getId(), content.getAudioStorageKey());
+            String readiness = getAudioReadiness(activeAudioUrl);
+            boolean audioAvailable = audioManifestService.isAudioAvailable(content.getId(), content.getAudioStorageKey(), content.getTranscriptText());
+            boolean spoken = isSpokenSpeech(activeAudioUrl);
 
             result.add(new ShadowingExerciseSummaryResponse(
                 content.getId(),
@@ -148,9 +149,10 @@ public class ShadowingService {
         LearningContent content = learningContentRepository.findByIdAndContentTypeAndIsPublishedTrue(contentId, "SHADOWING")
             .orElseThrow(() -> new ShadowingExerciseNotFoundException("Shadowing exercise not found with id: " + contentId));
 
-        String readiness = getAudioReadiness(content.getAudioStorageKey());
-        boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
-        boolean spoken = isSpokenSpeech(content.getAudioStorageKey());
+        String activeAudioUrl = audioManifestService.resolveActiveAudioUrl(content.getId(), content.getAudioStorageKey());
+        String readiness = getAudioReadiness(activeAudioUrl);
+        boolean audioAvailable = audioManifestService.isAudioAvailable(content.getId(), content.getAudioStorageKey(), content.getTranscriptText());
+        boolean spoken = isSpokenSpeech(activeAudioUrl);
 
         return new ShadowingExerciseDetailResponse(
             content.getId(),
@@ -158,7 +160,7 @@ public class ShadowingService {
             content.getTopicTag(),
             content.getCefrLevel(),
             content.getTranscriptText(),
-            content.getAudioStorageKey(),
+            activeAudioUrl,
             content.getAudioDurationSeconds(),
             audioAvailable,
             readiness,

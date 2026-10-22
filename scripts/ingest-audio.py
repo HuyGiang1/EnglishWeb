@@ -21,6 +21,11 @@ import sys
 import tempfile
 import wave
 
+try:
+    from media_inspector import inspect_audio_file, compute_file_sha256
+except ImportError:
+    from scripts.media_inspector import inspect_audio_file, compute_file_sha256
+
 SUPPORTED_EXTENSIONS = {
     ".wav": "audio/wav",
     ".mp3": "audio/mpeg",
@@ -31,51 +36,28 @@ VALID_ACCENTS = {"en-US", "en-GB", "en-AU", "en-CA"}
 
 
 def compute_sha256(filepath):
-    hasher = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        while chunk := f.read(65536):
-            hasher.update(chunk)
-    return hasher.hexdigest()
+    return compute_file_sha256(filepath)
 
 
 def inspect_media(filepath):
     ext = os.path.splitext(filepath)[1].lower()
-    size = os.path.getsize(filepath)
-    if size == 0:
-        raise ValueError(f"Source audio file is empty (0 bytes): {filepath}")
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError(f"Unsupported audio extension '{ext}'")
 
-    duration = 0.0
-    if ext == ".wav":
-        try:
-            with wave.open(filepath, "rb") as w:
-                frames = w.getnframes()
-                rate = w.getframerate()
-                if rate <= 0:
-                    raise ValueError("Invalid WAV framerate")
-                duration = round(frames / float(rate), 2)
-        except Exception as e:
-            raise ValueError(f"Invalid or corrupted WAV file: {e}")
-    elif ext == ".mp3":
-        # Validate MP3 header
-        with open(filepath, "rb") as f:
-            header = f.read(10)
-            if len(header) < 4:
-                raise ValueError("MP3 file too small")
-            is_id3 = header[:3] == b"ID3"
-            is_sync = header[0] == 0xFF and (header[1] & 0xE0) == 0xE0
-            if not (is_id3 or is_sync):
-                raise ValueError("Not a valid MP3 file (missing ID3 tag and MPEG sync word)")
-            # Estimation for MP3 when ffmpeg not present: 128kbps default estimate if duration not found
-            duration = round((size * 8.0) / (128.0 * 1000.0), 2)
+    if ext in (".wav", ".mp3"):
+        is_valid, duration, meta, err = inspect_audio_file(filepath)
+        if not is_valid or meta is None:
+            raise ValueError(f"Invalid or corrupted audio file: {err}")
+        return meta["size_bytes"], meta["duration_seconds"], meta["mime_type"]
     elif ext == ".m4a":
+        size = os.path.getsize(filepath)
         with open(filepath, "rb") as f:
             header = f.read(12)
             if b"ftyp" not in header:
                 raise ValueError("Not a valid M4A container (missing ftyp box)")
-            duration = 1.0
+        return size, 1.0, SUPPORTED_EXTENSIONS[ext]
 
-    mime_type = SUPPORTED_EXTENSIONS[ext]
-    return size, duration, mime_type
+    raise ValueError(f"Unsupported format: {ext}")
 
 
 def ingest_audio(

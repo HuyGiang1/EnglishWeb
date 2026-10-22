@@ -318,3 +318,88 @@ Offline promotions are managed via `scripts/promote-audio-release.py`:
    - Staging and test rehearsal use disposable test fixtures labeled with `provenance: TEST_CONTAINER_FIXTURE` and `READONLY_CONTAINER_FIXTURE`. These stubs test delivery and authorization mechanics only and do NOT constitute commercial licensing rights.
    - Commercial production speech remains **UNACQUIRED**.
    - ADR-012 remains strictly **PROPOSED**.
+
+---
+
+## 11. MP3 Production Compatibility & Audio Preflight (M3-T01B-2A)
+
+### 11.1 Pure Python Deterministic Media Inspector (`scripts/media_inspector.py`)
+To eliminate inaccurate 128 kbps duration heuristics without adding external binary dependencies (`ffprobe`/`ffmpeg` may not be present on all target hosts or minimalist production containers), EnglishFlow utilizes a deterministic, pure Python audio parser:
+- **MPEG Audio Frame Parser**: Resolves MPEG versions (MPEG-1, MPEG-2, MPEG-2.5) and Layer III framing tables.
+- **Variable Bitrate (VBR) & Fixed Bitrate (CBR) Support**: Parses Xing, Info, and VBRI header extensions to extract exact total frame counts and duration. In the absence of VBR headers, it performs deterministic frame-walking across the entire bitstream, accounting for frame padding and byte sync.
+- **ID3 Metadata Traversal**: Accurately parses ID3v2 syncsafe integer headers and skips ID3 tags without corrupting audio sync words; strips ID3v1 128-byte trailers at EOF.
+- **Fail-Closed Integrity**: Rejects malformed headers, corrupt sync words, truncated frames at EOF, zero-duration files, or empty files with explicit `ValueError`. Walks every audio frame across the entire byte stream to verify full container integrity.
+- **WAV Regression**: Leverages standard library `wave` module for RIFF WAV container parsing.
+- **Synthetic Frame Fixture Tests**: Validated by 12 automated unit tests in `scripts/tests/test_media_inspector.py` covering synthetic CBR, VBR, Polly-style 24 kHz MP3, ID3 tags, corrupt headers, truncated files, and WAV regression.
+- **Real Encoded MP3 Verification (`scripts/tests/test_real_encoded_mp3.py`)**:
+  - Validates the parser against real audio files produced by a standards-compliant LAME / FFmpeg encoder:
+    1. Real LAME-encoded CBR MP3 (128 kbps, 44.1 kHz).
+    2. Real LAME-encoded VBR MP3 with Xing/Info header.
+    3. Real MP3 with ID3v2 metadata frames (`title`, `artist`).
+    4. Real 24 kHz mono speech-compatible MP3 (matching AWS Polly Neural profile).
+    5. Truncated real MP3 (fails closed with `ValueError`).
+    6. Corrupted real MP3 (corrupted sync header fails closed with `ValueError`).
+    7. Exact duration agreement with Apple CoreAudio reference decoder (`/usr/bin/afinfo`), matching down to the hundredth of a second.
+  - Ephemeral Test Fixtures: Real audio files are generated dynamically in temporary directories (`tempfile.mkdtemp`) during test execution and completely removed upon completion. Zero test audio binaries are committed to version control.
+
+### 11.2 Verified Promotion CLI Contract (`scripts/promote-audio-release.py`)
+The promotion CLI utilizes top-level command-line flags rather than positional subcommands. Operators and release automation must execute the verified flag interface:
+```bash
+# 1. Inspect active release status and activation history:
+python3 scripts/promote-audio-release.py --storage-root /var/englishflow/media/audio --status
+
+# 2. Stage and validate a candidate versioned release (offline dry-run):
+python3 scripts/promote-audio-release.py \
+  --release-tag v1.0.0 \
+  --source-dir storage/audio/source \
+  --storage-root /var/englishflow/media/audio \
+  --dry-run
+
+# 3. Stage candidate versioned release:
+python3 scripts/promote-audio-release.py \
+  --release-tag v1.0.0 \
+  --source-dir storage/audio/source \
+  --storage-root /var/englishflow/media/audio
+
+# 4. Atomically activate an already-staged release:
+python3 scripts/promote-audio-release.py \
+  --storage-root /var/englishflow/media/audio \
+  --activate-release v1.0.0
+
+# 5. Atomically rollback active release to previous coherent release:
+python3 scripts/promote-audio-release.py \
+  --storage-root /var/englishflow/media/audio \
+  --rollback
+```
+
+### 11.3 Audio URL Invariant & Byte-Level Delivery Contract
+1. **URL-to-Byte Agreement Invariant**:
+   - A media URL ending in `.mp3` strictly serves MP3 bytes with `Content-Type: audio/mpeg`.
+   - A media URL ending in `.wav` strictly serves WAV bytes with `Content-Type: audio/wav`.
+   - The Spring MVC `ResourceResolver` does NOT silently substitute file bytes or mask extensions behind transparent aliasing.
+2. **Explicit HTTP 307 Temporary Redirect for Legacy URLs**:
+   - When a client requests a legacy `.wav` URL for an exercise whose active production release provides an approved `.mp3` file, `AudioMediaSecurityInterceptor` detects that the requested `.wav` file is absent but an approved `.mp3` equivalent exists.
+   - It issues an explicit `HTTP 307 Temporary Redirect` with `Location: /api/v1/media/audio/curated/<name>.mp3`.
+   - This eliminates cache confusion, keeps HTTP headers and payload bytes strictly aligned, and provides safe, backward-compatible URL migration.
+3. **Fail-Closed Security**:
+   - If the alternate asset is unapproved in production mode, the interceptor immediately rejects the request with `403 Forbidden` (`AUDIO_UNAPPROVED_FOR_PRODUCTION`).
+   - GET, HEAD, and Range requests are enforced uniformly across all media endpoints.
+
+### 11.4 Database Migration & Deployment Strategy
+1. **Dynamic Manifest URL Derivation**:
+   - Audio playback URLs in Dictation and Shadowing APIs are resolved at runtime from the active, immutable manifest via `AudioManifestService.resolveActiveAudioUrl(contentId, defaultStorageKey)`.
+   - Persistent database columns (`learning_contents.audio_storage_key`) do not need to be mutated prematurely; local developer WAV environments and production MP3 releases coexist without schema changes.
+2. **Manual Deployment SQL Scripts (NOT Flyway Migrations)**:
+   - Location: `scripts/deployment/manual_update_audio_storage_keys_to_mp3.sql`
+   - Rollback: `scripts/deployment/manual_rollback_audio_storage_keys_to_wav.sql`
+   - Classification: Optional manual procedures for DBA maintenance during major production milestones.
+   - Automated Flyway migrations (`V1` through `V10`) remain untouched and immutable.
+   - Idempotency & Preflight Verification: Both scripts execute within transactional `DO $$ ... $$` blocks that assert all 10 canonical UUIDs exist before applying changes.
+   - Zero Learning Data Impact: Foreign keys in `dictation_attempts` and `shadowing_takes` reference UUID `content_id`, guaranteeing zero disruption to historical learning records, streaks, or heatmaps.
+
+### 11.5 Provider Voice Support Preflight (AWS Polly Neural)
+Public documentation for AWS Polly Neural verifies the proposed voice assignments:
+- `Joanna`: US English (`en-US`), Female, Neural engine supported, native MP3 24 kHz output.
+- `Matthew`: US English (`en-US`), Male, Neural engine supported, native MP3 24 kHz output.
+- Output formats: Native `audio/mpeg` (MP3) at 24000 Hz eliminates the need for PCM WAV container wrappers.
+- All provider assignments remain proposals in unapproved dossiers. No AWS API calls (`DescribeVoices` or `SynthesizeSpeech`) have been executed, and zero cloud expenses have been incurred.

@@ -200,6 +200,58 @@ public class AudioManifestService {
         }
     }
 
+    public static String getAlternateExtension(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return null;
+        }
+        if (fileName.toLowerCase().endsWith(".wav")) {
+            return fileName.substring(0, fileName.length() - 4) + ".mp3";
+        } else if (fileName.toLowerCase().endsWith(".mp3")) {
+            return fileName.substring(0, fileName.length() - 4) + ".wav";
+        }
+        return null;
+    }
+
+    public String resolveActiveAudioUrl(UUID contentId, String defaultStorageKey) {
+        if (contentId != null) {
+            AudioManifestAsset asset = assetsByContentId.get(contentId);
+            if (asset != null) {
+                if (!productionMode || asset.isApprovedForProduction()) {
+                    if (checkFileExists(asset.fileName())) {
+                        return asset.storageKey();
+                    }
+                }
+            }
+        }
+        return resolveActiveAudioUrl(defaultStorageKey);
+    }
+
+    public String resolveActiveAudioUrl(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            return storageKey;
+        }
+        String fileName = extractFileName(storageKey);
+        if (checkFileExists(fileName)) {
+            return storageKey;
+        }
+        String altFileName = getAlternateExtension(fileName);
+        if (altFileName != null) {
+            Optional<AudioManifestAsset> altAsset = getAssetByFileName(altFileName);
+            if (altAsset.isPresent() && checkFileExists(altFileName)) {
+                if (!productionMode || altAsset.get().isApprovedForProduction()) {
+                    int idx = storageKey.lastIndexOf('/');
+                    return idx >= 0 ? storageKey.substring(0, idx + 1) + altFileName : altFileName;
+                }
+            }
+        }
+        return storageKey;
+    }
+
+    public boolean isAudioAvailable(UUID contentId, String defaultStorageKey, String canonicalTranscript) {
+        String activeUrl = resolveActiveAudioUrl(contentId, defaultStorageKey);
+        return isAudioAvailable(activeUrl, canonicalTranscript);
+    }
+
     public AudioReadinessStatus getAudioReadiness(String storageKey) {
         if (storageKey == null || storageKey.isBlank()) {
             return AudioReadinessStatus.MISSING;
@@ -207,11 +259,20 @@ public class AudioManifestService {
 
         String fileName = extractFileName(storageKey);
         boolean exists = checkFileExists(fileName);
+        String resolvedKey = storageKey;
+        if (!exists) {
+            String altFileName = getAlternateExtension(fileName);
+            if (altFileName != null && checkFileExists(altFileName)) {
+                exists = true;
+                int idx = storageKey.lastIndexOf('/');
+                resolvedKey = idx >= 0 ? storageKey.substring(0, idx + 1) + altFileName : altFileName;
+            }
+        }
         if (!exists) {
             return AudioReadinessStatus.MISSING;
         }
 
-        Optional<AudioManifestAsset> assetOpt = getAssetByStorageKey(storageKey);
+        Optional<AudioManifestAsset> assetOpt = getAssetByStorageKey(resolvedKey);
         if (assetOpt.isPresent()) {
             return assetOpt.get().readinessStatus();
         }
@@ -239,13 +300,14 @@ public class AudioManifestService {
             return false;
         }
 
-        AudioReadinessStatus readiness = getAudioReadiness(storageKey);
+        String resolvedKey = resolveActiveAudioUrl(storageKey);
+        AudioReadinessStatus readiness = getAudioReadiness(resolvedKey);
         if (readiness == AudioReadinessStatus.MISSING) {
             return false;
         }
 
         if (productionMode) {
-            Optional<AudioManifestAsset> assetOpt = getAssetByStorageKey(storageKey);
+            Optional<AudioManifestAsset> assetOpt = getAssetByStorageKey(resolvedKey);
             if (assetOpt.isEmpty()) {
                 return false;
             }
@@ -255,12 +317,12 @@ public class AudioManifestService {
             }
             if (canonicalTranscript != null && !canonicalTranscript.isBlank()) {
                 if (!asset.matchesCanonicalTranscript(canonicalTranscript)) {
-                    log.warn("Production audio rejected for {}: transcript SHA-256 mismatch against canonical transcript", storageKey);
+                    log.warn("Production audio rejected for {}: transcript SHA-256 mismatch against canonical transcript", resolvedKey);
                     return false;
                 }
             }
             if (!verifyAssetSha256(asset)) {
-                log.warn("Production audio rejected for {}: SHA-256 hash mismatch between file on disk and manifest", storageKey);
+                log.warn("Production audio rejected for {}: SHA-256 hash mismatch between file on disk and manifest", resolvedKey);
                 return false;
             }
             return true;
@@ -308,6 +370,21 @@ public class AudioManifestService {
             return Optional.of(asset);
         }
         String fileName = extractFileName(storageKey);
+        AudioManifestAsset fileAsset = assetsByFileName.get(fileName);
+        if (fileAsset != null) {
+            return Optional.of(fileAsset);
+        }
+        String altFileName = getAlternateExtension(fileName);
+        if (altFileName != null) {
+            return Optional.ofNullable(assetsByFileName.get(altFileName));
+        }
+        return Optional.empty();
+    }
+
+    public Optional<AudioManifestAsset> getAssetByFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return Optional.empty();
+        }
         return Optional.ofNullable(assetsByFileName.get(fileName));
     }
 

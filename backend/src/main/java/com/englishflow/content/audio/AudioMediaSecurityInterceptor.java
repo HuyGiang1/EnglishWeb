@@ -75,9 +75,56 @@ public class AudioMediaSecurityInterceptor implements HandlerInterceptor {
             }
         }
 
-        // 5. Production gate: reject unapproved / synthetic / local macOS dev audio
+        // 5. Check physical file existence and handle explicit redirect for extension changes
+        boolean exactFileExists = audioManifestService.checkFileExists(fileName);
+
+        if (!exactFileExists) {
+            String altFileName = AudioManifestService.getAlternateExtension(fileName);
+            if (altFileName != null) {
+                Optional<AudioManifestAsset> altAssetOpt = audioManifestService.getAssetByFileName(altFileName);
+                if (altAssetOpt.isPresent()) {
+                    AudioManifestAsset altAsset = altAssetOpt.get();
+                    if (audioManifestService.isProductionMode() && !altAsset.isApprovedForProduction()) {
+                        writeError(
+                            response,
+                            HttpStatus.FORBIDDEN,
+                            "AUDIO_UNAPPROVED_FOR_PRODUCTION",
+                            "Audio asset '" + fileName + "' is not approved for production distribution (readiness=" + altAsset.readinessStatus() + ")"
+                        );
+                        return false;
+                    }
+                    if (audioManifestService.checkFileExists(altFileName)) {
+                        int idx = uri.lastIndexOf('/');
+                        String redirectUri = idx >= 0 ? uri.substring(0, idx + 1) + altFileName : altFileName;
+                        response.setStatus(HttpStatus.TEMPORARY_REDIRECT.value());
+                        response.setHeader(org.springframework.http.HttpHeaders.LOCATION, redirectUri);
+                        return false;
+                    }
+                }
+            }
+
+            if (audioManifestService.isProductionMode()) {
+                Optional<AudioManifestAsset> assetOpt = audioManifestService.getAssetByStorageKey(uri);
+                if (assetOpt.isPresent() && !assetOpt.get().isApprovedForProduction()) {
+                    writeError(
+                        response,
+                        HttpStatus.FORBIDDEN,
+                        "AUDIO_UNAPPROVED_FOR_PRODUCTION",
+                        "Audio asset '" + fileName + "' is not approved for production distribution (readiness=" + assetOpt.get().readinessStatus() + ")"
+                    );
+                    return false;
+                }
+                writeError(response, HttpStatus.NOT_FOUND, "MEDIA_NOT_FOUND", "Audio asset is not registered in production manifest");
+                return false;
+            }
+
+            writeError(response, HttpStatus.NOT_FOUND, "MEDIA_NOT_FOUND", "Audio resource not found");
+            return false;
+        }
+
+        // 6. Production gate for physically present file
         if (audioManifestService.isProductionMode()) {
-            Optional<AudioManifestAsset> assetOpt = audioManifestService.getAssetByStorageKey(uri);
+            Optional<AudioManifestAsset> assetOpt = audioManifestService.getAssetByFileName(fileName);
             if (assetOpt.isEmpty()) {
                 writeError(response, HttpStatus.NOT_FOUND, "MEDIA_NOT_FOUND", "Audio asset is not registered in production manifest");
                 return false;

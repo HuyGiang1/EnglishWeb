@@ -89,14 +89,15 @@ public class DictationService {
             boolean isCompleted = lastAttemptOpt.isPresent();
             Double lastAccuracy = lastAttemptOpt.map(a -> a.getAccuracyScore().doubleValue()).orElse(null);
             Double duration = content.getAudioDurationSeconds() != null ? content.getAudioDurationSeconds().doubleValue() : null;
-            boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
+            String activeAudioUrl = audioManifestService.resolveActiveAudioUrl(content.getId(), content.getAudioStorageKey());
+            boolean audioAvailable = audioManifestService.isAudioAvailable(content.getId(), content.getAudioStorageKey(), content.getTranscriptText());
 
             summaries.add(new DictationExerciseSummaryResponse(
                 content.getId(),
                 content.getTitle(),
                 content.getCefrLevel(),
                 content.getTopicTag(),
-                content.getAudioStorageKey(),
+                activeAudioUrl,
                 duration,
                 isCompleted,
                 lastAccuracy,
@@ -118,14 +119,15 @@ public class DictationService {
             .orElseThrow(() -> new ExerciseNotFoundException("Dictation exercise not found: " + contentId));
 
         Double duration = content.getAudioDurationSeconds() != null ? content.getAudioDurationSeconds().doubleValue() : null;
-        boolean audioAvailable = isAudioAvailable(content.getAudioStorageKey(), content.getTranscriptText());
+        String activeAudioUrl = audioManifestService.resolveActiveAudioUrl(content.getId(), content.getAudioStorageKey());
+        boolean audioAvailable = audioManifestService.isAudioAvailable(content.getId(), content.getAudioStorageKey(), content.getTranscriptText());
 
         return new DictationExerciseDetailResponse(
             content.getId(),
             content.getTitle(),
             content.getCefrLevel(),
             content.getTopicTag(),
-            content.getAudioStorageKey(),
+            activeAudioUrl,
             duration,
             audioAvailable
         );
