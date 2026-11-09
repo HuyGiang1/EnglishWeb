@@ -4,7 +4,9 @@ import { useLocale } from "@/lib/i18n/locale-provider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { learningErrorKey } from "@/lib/i18n/learning-errors";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import { ApiError } from "@/lib/api/client";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { reviewApi, type ReviewCard, type ReviewRating, type ReviewSubmissionResponse } from "@/lib/api/review";
+import { reviewApi, type ReviewCard, type ReviewRating, type ReviewSubmissionResponse, type ReviewSubmissionPayload } from "@/lib/api/review";
 
 interface SessionResultItem {
   term: string;
@@ -25,7 +27,32 @@ interface SessionResultItem {
 }
 
 export default function ReviewFocusPage() {
+  return <Suspense fallback={null}><ReviewRoute /></Suspense>;
+}
+
+function ReviewRoute() {
+  const params = useSearchParams();
   const { t } = useLocale();
+  const collectionId = params.has("collectionId") ? params.getAll("collectionId").join(",") : undefined;
+  const scoped = collectionId !== undefined;
+  return (
+    <section className="w-full space-y-4">
+      <nav aria-label={t("learnReviewContext")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span className="font-medium" data-testid="review-scope">{t(scoped ? "learnReviewStudySet" : "learnReviewAll")}</span>
+        {scoped && <Link className="underline underline-offset-4" href={`/collections/${encodeURIComponent(collectionId)}`}>{t("learnBackToStudySet")}</Link>}
+      </nav>
+      <ReviewSession key={collectionId ?? "global"} collectionId={collectionId} />
+    </section>
+  );
+}
+
+function ReviewSession({ collectionId }: { collectionId?: string }) {
+  const { t } = useLocale();
+  const scoped = collectionId !== undefined;
+  const [totalDue, setTotalDue] = useState(0);
+  const pendingSubmission = useRef<ReviewSubmissionPayload | null>(null);
+  const submissionInFlight = useRef(false);
+  const queueGeneration = useRef(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<TranslationKey | null>(null);
   const [cards, setCards] = useState<ReviewCard[]>([]);
@@ -44,10 +71,15 @@ export default function ReviewFocusPage() {
 
   // Load review queue on mount
   const loadQueue = useCallback(async () => {
+    const generation = ++queueGeneration.current;
     setLoading(true);
     setError(null);
+    setSubmitError(null);
     try {
-      const res = await reviewApi.getQueue({ limit: 50 });
+      const res = await reviewApi.getQueue({ collectionId, limit: 50 });
+      if (generation !== queueGeneration.current) return;
+      setTotalDue(res.totalDue);
+      pendingSubmission.current = null;
       setCards(res.items || []);
       setCurrentIndex(0);
       setIsRevealed(false);
@@ -56,16 +88,21 @@ export default function ReviewFocusPage() {
       setSessionResults([]);
       setStartTime(Date.now());
     } catch (err: unknown) {
-      const msg = learningErrorKey(err, "learnFailedToLoadReviewQueue2");
+      if (generation !== queueGeneration.current) return;
+      const msg = scoped && err instanceof ApiError && err.code === "NOT_FOUND"
+        ? "learnStudySetUnavailable"
+        : learningErrorKey(err, "learnFailedToLoadReviewQueue2");
       setError(msg);
     } finally {
-      setLoading(false);
+      if (generation === queueGeneration.current) setLoading(false);
     }
-  }, []);
+  }, [collectionId, scoped]);
 
+  const invalidateQueue = useCallback(() => { queueGeneration.current++; }, []);
   useEffect(() => {
     loadQueue();
-  }, [loadQueue]);
+    return invalidateQueue;
+  }, [loadQueue, invalidateQueue]);
 
   const currentCard: ReviewCard | undefined = cards[currentIndex];
   const isComplete = !loading && !error && cards.length > 0 && currentIndex >= cards.length;
@@ -73,33 +110,35 @@ export default function ReviewFocusPage() {
   // Grade submission handler
   const handleGrade = useCallback(
     async (grade: ReviewRating) => {
-      if (!currentCard || submitting) return;
+      if (!currentCard || submissionInFlight.current) return;
+      submissionInFlight.current = true;
 
       setSubmitting(true);
       setSubmitError(null);
-      setLastGradeAttempted(grade);
-
-      const elapsedSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+      const payload = pendingSubmission.current ?? {
+        srsItemId: currentCard.srsItemId,
+        attemptId: currentAttemptId,
+        grade,
+        durationSeconds: Math.max(1, Math.round((Date.now() - startTime) / 1000)),
+      };
+      pendingSubmission.current = payload;
+      setLastGradeAttempted(payload.grade);
 
       try {
-        const response: ReviewSubmissionResponse = await reviewApi.submitGrade({
-          srsItemId: currentCard.srsItemId,
-          attemptId: currentAttemptId,
-          grade,
-          durationSeconds: elapsedSeconds,
-        });
+        const response: ReviewSubmissionResponse = await reviewApi.submitGrade(payload);
 
         // Record real result in session summary
         setSessionResults((prev) => [
           ...prev,
           {
             term: currentCard.term,
-            grade,
+            grade: payload.grade,
             newIntervalDays: response.newIntervalDays,
           },
         ]);
 
-        // Advance to next card
+        // Advance only after an acknowledged response; retries keep every payload field.
+        pendingSubmission.current = null;
         setCurrentIndex((prev) => prev + 1);
         setIsRevealed(false);
         setCurrentAttemptId(crypto.randomUUID());
@@ -109,10 +148,11 @@ export default function ReviewFocusPage() {
         const msg = learningErrorKey(err, "learnGradeSubmissionFailedPleaseRetry");
         setSubmitError(msg);
       } finally {
+        submissionInFlight.current = false;
         setSubmitting(false);
       }
     },
-    [currentCard, currentAttemptId, submitting, startTime]
+    [currentCard, currentAttemptId, startTime]
   );
 
   // Retry the same attempt with the same attempt_id
@@ -136,7 +176,7 @@ export default function ReviewFocusPage() {
         return;
       }
 
-      if (loading || error || !currentCard || submitting) {
+      if (loading || error || !currentCard || submitting || submitError) {
         return;
       }
 
@@ -164,7 +204,7 @@ export default function ReviewFocusPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [loading, error, currentCard, isRevealed, submitting, handleGrade]);
+  }, [loading, error, currentCard, isRevealed, submitting, submitError, handleGrade]);
 
   // Pronunciation audio preview (browser Web Speech API)
   const speakTerm = (term: string) => {
@@ -220,7 +260,7 @@ export default function ReviewFocusPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">{t("learnAllCaughtUp")}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{t("learnYouHaveZeroFlashcardsDueForReviewRightNowAddNewWordsToYourLibraryOrCheckBackLater")}</p>
+          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{t(scoped ? "learnNoStudySetVocabularyDue" : "learnYouHaveZeroFlashcardsDueForReviewRightNowAddNewWordsToYourLibraryOrCheckBackLater")}</p>
         </div>
         <div className="flex items-center gap-3 mt-4">
           <Link href="/vocabulary">
@@ -276,7 +316,8 @@ export default function ReviewFocusPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button variant="outline" size="sm" onClick={loadQueue}>{t("learnCheckDueQueue")}</Button>
           <Link href="/dashboard">
             <Button size="sm">{t("learnReturnToWorkspace")}</Button>
           </Link>
@@ -293,6 +334,7 @@ export default function ReviewFocusPage() {
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-6" data-testid="review-container">
+      <p className="text-sm text-muted-foreground" data-testid="review-due-count">{t("learnDueAtQueueLoad", { count: totalDue })}</p>
       {/* Session Progress Header */}
       <div className="w-full flex items-center justify-between text-xs text-muted-foreground font-mono">
         <span data-testid="card-position" role="status" aria-live="polite">{t("learnCard")}{" "}{currentIndex + 1}{" "}{t("learnOf")}{" "}{cards.length}
@@ -409,7 +451,7 @@ export default function ReviewFocusPage() {
             <Button
               type="button"
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || !!submitError}
               onClick={() => handleGrade("AGAIN")}
               className="h-auto py-3 px-3 flex flex-col items-center gap-1 border-border hover:border-foreground/40 hover:bg-muted/60 transition-all text-center"
               data-testid="grade-again-btn"
@@ -427,7 +469,7 @@ export default function ReviewFocusPage() {
             <Button
               type="button"
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || !!submitError}
               onClick={() => handleGrade("HARD")}
               className="h-auto py-3 px-3 flex flex-col items-center gap-1 border-border hover:border-foreground/40 hover:bg-muted/60 transition-all text-center"
               data-testid="grade-hard-btn"
@@ -445,7 +487,7 @@ export default function ReviewFocusPage() {
             <Button
               type="button"
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || !!submitError}
               onClick={() => handleGrade("GOOD")}
               className="h-auto py-3 px-3 flex flex-col items-center gap-1 border-border hover:border-foreground/40 hover:bg-muted/60 transition-all text-center"
               data-testid="grade-good-btn"
@@ -463,7 +505,7 @@ export default function ReviewFocusPage() {
             <Button
               type="button"
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || !!submitError}
               onClick={() => handleGrade("EASY")}
               className="h-auto py-3 px-3 flex flex-col items-center gap-1 border-border hover:border-foreground/40 hover:bg-muted/60 transition-all text-center"
               data-testid="grade-easy-btn"

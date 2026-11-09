@@ -18,3 +18,7 @@ export const JetBrains_Mono = () => ({ variable: "test-mono" });
 let params = { id: "fixture-id" };
 export const setParams = (value) => { params = value; };
 export const useParams = () => params;
+
+let searchParams = new URLSearchParams();
+export const setSearchParams = (value = "") => { searchParams = new URLSearchParams(value); };
+export const useSearchParams = () => searchParams;

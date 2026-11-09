@@ -54,5 +54,45 @@ public interface SrsItemRepository extends JpaRepository<SrsItem, UUID> {
         @Param("currentDate") LocalDate currentDate
     );
 
+    @Query("""
+        SELECT s, v FROM SrsItem s
+        JOIN com.englishflow.vocabulary.Vocabulary v ON s.vocabularyId = v.id AND s.userId = v.userId
+        WHERE s.userId = :userId
+          AND s.state != 'SUSPENDED'
+          AND s.dueDate <= :currentDate
+          AND v.deletedAt IS NULL
+          AND EXISTS (
+              SELECT 1 FROM com.englishflow.vocabulary.VocabularyCollection vc
+              WHERE vc.collectionId = :collectionId
+                AND vc.userId = :userId AND vc.vocabularyId = v.id
+          )
+        ORDER BY s.dueDate ASC, s.createdAt ASC
+    """)
+    List<Object[]> findDueCardsInCollection(
+        @Param("userId") UUID userId,
+        @Param("collectionId") UUID collectionId,
+        @Param("currentDate") LocalDate currentDate,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT COUNT(s) FROM SrsItem s
+        JOIN com.englishflow.vocabulary.Vocabulary v ON s.vocabularyId = v.id AND s.userId = v.userId
+        WHERE s.userId = :userId
+          AND s.state != 'SUSPENDED'
+          AND s.dueDate <= :currentDate
+          AND v.deletedAt IS NULL
+          AND EXISTS (
+              SELECT 1 FROM com.englishflow.vocabulary.VocabularyCollection vc
+              WHERE vc.collectionId = :collectionId
+                AND vc.userId = :userId AND vc.vocabularyId = v.id
+          )
+    """)
+    long countDueCardsInCollection(
+        @Param("userId") UUID userId,
+        @Param("collectionId") UUID collectionId,
+        @Param("currentDate") LocalDate currentDate
+    );
+
     long countByUserId(UUID userId);
 }

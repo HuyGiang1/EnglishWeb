@@ -309,7 +309,8 @@ export default function CollectionDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring" href={`/review?collectionId=${encodeURIComponent(collectionId)}`}>{t("learnReviewStudySet")}</Link>
               <Button
                 onClick={handleOpenAddWords}
                 className="flex items-center gap-1.5"

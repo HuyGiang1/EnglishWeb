@@ -43,13 +43,24 @@ public class ReviewController {
 
     @GetMapping("/queue")
     public ResponseEntity<ReviewQueueResponse> getDueQueue(
-        @RequestParam(name = "collectionId", required = false) UUID collectionId,
+        @RequestParam(name = "collectionId", required = false) String collectionId,
         @RequestParam(name = "limit", defaultValue = "50") int limit,
         Authentication authentication
     ) {
         UUID userId = getAuthenticatedUserId(authentication);
-        ReviewQueueResponse response = reviewService.getDueQueue(userId, limit);
+        ReviewQueueResponse response = reviewService.getDueQueue(userId, parseCollectionId(collectionId), limit);
         return ResponseEntity.ok(response);
+    }
+
+    private UUID parseCollectionId(String value) {
+        if (value == null) return null;
+        try {
+            UUID id = UUID.fromString(value);
+            if (id.toString().equalsIgnoreCase(value)) return id;
+        } catch (IllegalArgumentException ignored) {
+            // Never echo rejected scope input into API errors.
+        }
+        throw new IllegalArgumentException("collectionId must be a valid UUID.");
     }
 
     @PostMapping({"/grade", "/submissions"})

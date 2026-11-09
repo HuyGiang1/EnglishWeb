@@ -13,6 +13,7 @@ import com.englishflow.review.scheduler.SchedulingResult;
 import com.englishflow.review.scheduler.SrsScheduler;
 import com.englishflow.user.User;
 import com.englishflow.user.UserRepository;
+import com.englishflow.vocabulary.CollectionService;
 import com.englishflow.vocabulary.Vocabulary;
 import com.englishflow.vocabulary.VocabularyRepository;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ public class ReviewService {
     private final UserRepository userRepository;
     private final SrsScheduler srsScheduler;
     private final Clock clock;
+    private final CollectionService collectionService;
 
     public ReviewService(
         SrsItemRepository srsItemRepository,
@@ -52,7 +54,8 @@ public class ReviewService {
         VocabularyRepository vocabularyRepository,
         UserRepository userRepository,
         SrsScheduler srsScheduler,
-        Clock clock
+        Clock clock,
+        CollectionService collectionService
     ) {
         this.srsItemRepository = srsItemRepository;
         this.srsReviewHistoryRepository = srsReviewHistoryRepository;
@@ -61,6 +64,7 @@ public class ReviewService {
         this.userRepository = userRepository;
         this.srsScheduler = srsScheduler;
         this.clock = clock;
+        this.collectionService = collectionService;
     }
 
     /**
@@ -69,17 +73,34 @@ public class ReviewService {
      */
     @Transactional
     public ReviewQueueResponse getDueQueue(UUID userId, Integer limit) {
+        return getDueQueue(userId, null, limit);
+    }
+
+    @Transactional
+    public ReviewQueueResponse getDueQueue(UUID userId, UUID collectionId, Integer limit) {
+        // Validate ownership before provisioning or looking up any scoped vocabulary.
+        if (collectionId != null) collectionService.getCollection(userId, collectionId);
         ZoneId zoneId = resolveUserZone(userId);
         LocalDate userLocalDate = LocalDate.now(clock.withZone(zoneId));
 
         // Lazily provision any active vocabularies that lack an SRS card
-        provisionMissingSrsItems(userId, userLocalDate);
+        if (collectionId == null) {
+            provisionMissingSrsItems(userId, userLocalDate);
+        } else {
+            for (Vocabulary vocab : vocabularyRepository.findUnprovisionedVocabulariesInCollection(userId, collectionId)) {
+                provisionCardForVocabulary(userId, vocab.getId(), userLocalDate);
+            }
+        }
 
         int fetchLimit = (limit != null && limit > 0) ? Math.min(limit, 100) : 50;
         Pageable pageable = PageRequest.of(0, fetchLimit);
 
-        List<Object[]> rows = srsItemRepository.findDueCardsWithVocabulary(userId, userLocalDate, pageable);
-        long totalDue = srsItemRepository.countDueCards(userId, userLocalDate);
+        List<Object[]> rows = collectionId == null
+            ? srsItemRepository.findDueCardsWithVocabulary(userId, userLocalDate, pageable)
+            : srsItemRepository.findDueCardsInCollection(userId, collectionId, userLocalDate, pageable);
+        long totalDue = collectionId == null
+            ? srsItemRepository.countDueCards(userId, userLocalDate)
+            : srsItemRepository.countDueCardsInCollection(userId, collectionId, userLocalDate);
 
         List<ReviewCardDto> items = new ArrayList<>(rows.size());
         for (Object[] row : rows) {

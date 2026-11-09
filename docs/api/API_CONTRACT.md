@@ -380,6 +380,14 @@ All collection endpoints support standard query parameters:
 * **Method & Route**: `GET /api/v1/review/queue`
 * **Purpose**: Fetch cards due for review on the user's current local date.
 * **Query Parameters**: `collectionId` (optional UUID), `limit` (int, default `50`).
+* **Scope semantics (M3-EVO-3A)**:
+  * Omitting `collectionId` preserves global review. A supplied ID selects only active vocabulary belonging to the authenticated user's Collection (Study Set), using the existing shared user/vocabulary SRS records.
+  * Validate Collection ownership before queue queries or lazy SRS provisioning. Missing, deleted and foreign Collections return `404 NOT_FOUND` without disclosing whether another user's Collection exists. Blank, malformed or non-canonical UUID inputs return `400 VALIDATION_FAILED`; they never fall back to global review.
+  * Both `items` and `totalDue` exclude soft-deleted vocabulary, suspended cards and cards due after the user's current local date. Existing empty Collections and Collections with no due words return `200`, `totalDue: 0`, `items: []`.
+  * Ordering remains due date ascending, then SRS creation time ascending. Positive limits are capped at 100; absent/non-positive limits use 50. `totalDue` counts all eligible cards in the selected scope before the batch limit.
+  * Lazy provisioning in scoped mode affects only active member vocabulary lacking an SRS record; global mode retains existing provisioning behavior. Queue loading does not reset schedules or create review history.
+  * Clients continue batches by fetching the same scoped queue after grading. `totalDue` is a queue-load snapshot, not a live counter.
+
 * **Response DTO (`200 OK`)**:
   ```json
   {
@@ -406,6 +414,8 @@ All collection endpoints support standard query parameters:
 ### Endpoint: Submit Card Grade (Idempotent Action)
 * **Method & Route**: `POST /api/v1/review/grade`
 * **Purpose**: Grade a card (1=Again, 2=Hard, 3=Good, 4=Easy), calculate new interval, record history, and publish activity event.
+* **Collection selection versus submission authorization (M3-EVO-3A)**: The payload is unchanged and does not require `collectionId`. Collection scope selects a queue; submission authority remains ownership of the active vocabulary/SRS item. A user can already review their own cards globally, so removing membership after queue load does not revoke that authority. An identical retry must retain the entire payload, including `attemptId`, grade and `durationSeconds`, to replay the original result. Collection membership never authorizes another user's card or creates a separate schedule/history.
+
 * **Request DTO**:
   ```json
   {

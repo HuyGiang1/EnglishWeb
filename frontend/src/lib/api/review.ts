@@ -39,7 +39,7 @@ export interface ReviewSubmissionResponse {
 export const reviewApi = {
   getQueue: async (params?: { collectionId?: string; limit?: number }): Promise<ReviewQueueResponse> => {
     const query = new URLSearchParams();
-    if (params?.collectionId) {
+    if (params?.collectionId !== undefined) {
       query.set("collectionId", params.collectionId);
     }
     if (params?.limit) {

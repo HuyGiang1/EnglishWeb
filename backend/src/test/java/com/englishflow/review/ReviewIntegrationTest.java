@@ -8,6 +8,10 @@ import com.englishflow.review.dto.SubmissionResult;
 import com.englishflow.review.scheduler.ReviewRating;
 import com.englishflow.user.User;
 import com.englishflow.user.UserRepository;
+import com.englishflow.vocabulary.Collection;
+import com.englishflow.vocabulary.CollectionRepository;
+import com.englishflow.vocabulary.VocabularyCollection;
+import com.englishflow.vocabulary.VocabularyCollectionRepository;
 import com.englishflow.vocabulary.Vocabulary;
 import com.englishflow.vocabulary.VocabularyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -96,13 +100,20 @@ class ReviewIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private CollectionRepository collectionRepository;
+    @Autowired private VocabularyCollectionRepository membershipRepository;
+    @Autowired private javax.sql.DataSource dataSource;
+
     private User userA;
     private User userB;
     private MockHttpSession sessionA;
     private MockHttpSession sessionB;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
+        try (var connection = dataSource.getConnection()) {
+            assertThat(connection.getMetaData().getURL()).isEqualTo(postgres.getJdbcUrl());
+        }
         cleanUpAll();
 
         userA = userRepository.save(new User(
@@ -848,4 +859,152 @@ class ReviewIntegrationTest {
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
+    private Collection studySet(User user, String name, Vocabulary... words) {
+        Collection collection = collectionRepository.save(new Collection(user.getId(), name, null));
+        for (Vocabulary word : words) {
+            membershipRepository.save(new VocabularyCollection(user.getId(), collection.getId(), word.getId()));
+        }
+        return collection;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions scopedQueue(UUID collectionId) throws Exception {
+        return mockMvc.perform(get("/api/v1/review/queue").session(sessionA)
+            .param("collectionId", collectionId.toString()));
+    }
+
+    @Test
+    void scopedQueueAndCountExcludeOtherSetsAndDoNotProvisionAccountWide() throws Exception {
+        Vocabulary included = createVocab(userA, "included", "noun");
+        Vocabulary unrelated = createVocab(userA, "unrelated", "noun");
+        Collection set = studySet(userA, "Selected", included);
+        scopedQueue(set.getId()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalDue").value(1))
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].vocabularyId").value(included.getId().toString()));
+        assertThat(srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), unrelated.getId())).isEmpty();
+        mockMvc.perform(get("/api/v1/review/queue").session(sessionA))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(2));
+    }
+
+    @Test
+    void scopedEmptyCollectionIsEmptyWithoutProvisioningUnrelatedWords() throws Exception {
+        createVocab(userA, "outside", "noun");
+        scopedQueue(studySet(userA, "Empty").getId()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalDue").value(0)).andExpect(jsonPath("$.items").isEmpty());
+        assertThat(srsItemRepository.countByUserId(userA.getId())).isZero();
+    }
+
+    @Test
+    void scopedEligibilityMatchesCountForFutureSuspendedAndDeletedWords() throws Exception {
+        Vocabulary due = createVocab(userA, "due", "noun");
+        Vocabulary future = createVocab(userA, "future", "noun");
+        Vocabulary suspended = createVocab(userA, "suspended", "noun");
+        Vocabulary deleted = createVocab(userA, "deleted", "noun");
+        Collection set = studySet(userA, "Mixed", due, future, suspended, deleted);
+        reviewService.getDueQueue(userA.getId(), set.getId(), 50);
+        SrsItem f = srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), future.getId()).orElseThrow();
+        f.setDueDate(LocalDate.now().plusYears(1)); srsItemRepository.save(f);
+        SrsItem paused = srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), suspended.getId()).orElseThrow();
+        paused.setState("SUSPENDED"); srsItemRepository.save(paused);
+        deleted.setDeletedAt(Instant.now()); vocabularyRepository.save(deleted);
+        scopedQueue(set.getId()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalDue").value(1)).andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].vocabularyId").value(due.getId().toString()));
+        SrsItem d = srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), due.getId()).orElseThrow();
+        d.setDueDate(LocalDate.now().plusYears(1)); srsItemRepository.save(d);
+        scopedQueue(set.getId()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalDue").value(0)).andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void foreignAndMissingCollectionsHaveIndistinguishableErrorsAndNoProvisioning() throws Exception {
+        createVocab(userA, "not-provisioned", "noun");
+        Collection foreign = studySet(userB, "Private", createVocab(userB, "secret", "noun"));
+        String foreignError = scopedQueue(foreign.getId()).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOT_FOUND")).andReturn().getResponse().getContentAsString();
+        scopedQueue(UUID.randomUUID()).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        assertThat(foreignError).doesNotContain("Private", "secret");
+        assertThat(srsItemRepository.count()).isZero();
+    }
+
+    @Test
+    void deletedCollectionReturnsNotFoundAndPreservesExistingSrs() throws Exception {
+        Vocabulary word = createVocab(userA, "retained", "noun");
+        Collection set = studySet(userA, "Deleted", word);
+        scopedQueue(set.getId()).andExpect(status().isOk());
+        UUID srsId = srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), word.getId()).orElseThrow().getId();
+        collectionRepository.deleteById(set.getId());
+        scopedQueue(set.getId()).andExpect(status().isNotFound());
+        assertThat(srsItemRepository.findById(srsId)).isPresent();
+        assertThat(vocabularyRepository.findById(word.getId())).isPresent();
+    }
+
+    @Test
+    void malformedOrBlankScopeNeverFallsBackToGlobalQueue() throws Exception {
+        createVocab(userA, "global", "noun");
+        for (String invalid : List.of("", " ", "not-a-uuid", "1-1-1-1-1")) {
+            mockMvc.perform(get("/api/v1/review/queue").session(sessionA).param("collectionId", invalid))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        assertThat(srsItemRepository.count()).isZero();
+    }
+
+    @Test
+    void scopedQueueRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/review/queue").param("collectionId", UUID.randomUUID().toString()))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void scopedLimitsKeepTotalCountAndOrderingAcrossBatches() throws Exception {
+        Collection set = studySet(userA, "Large");
+        for (int i = 0; i < 103; i++) {
+            Vocabulary word = createVocab(userA, "word-" + i, "noun");
+            membershipRepository.save(new VocabularyCollection(userA.getId(), set.getId(), word.getId()));
+        }
+        for (String limit : List.of("1", "2", "1000", "0", "-1")) {
+            int size = switch (limit) { case "1" -> 1; case "2" -> 2; case "1000" -> 100; default -> 50; };
+            mockMvc.perform(get("/api/v1/review/queue").session(sessionA)
+                .param("collectionId", set.getId().toString()).param("limit", limit))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(103))
+                .andExpect(jsonPath("$.items.length()").value(size))
+                .andExpect(jsonPath("$.items[0].term").value("word-0"));
+        }
+    }
+
+    @Test
+    void sharedWordUsesOneScheduleAndReplayAcrossCollectionsAndGlobalQueue() throws Exception {
+        Vocabulary word = createVocab(userA, "shared", "noun");
+        Collection a = studySet(userA, "A", word), b = studySet(userA, "B", word);
+        scopedQueue(a.getId()).andExpect(status().isOk());
+        SrsItem item = srsItemRepository.findByUserIdAndVocabularyId(userA.getId(), word.getId()).orElseThrow();
+        scopedQueue(b.getId()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].srsItemId").value(item.getId().toString()));
+        ReviewSubmissionRequest request = new ReviewSubmissionRequest(item.getId(), UUID.randomUUID(), ReviewRating.GOOD, 12);
+        // Mutation still requires CSRF, even if the item was selected through a collection.
+        mockMvc.perform(post("/api/v1/review/grade").session(sessionA).contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request))).andExpect(status().isForbidden());
+        for (int i = 0; i < 2; i++) {
+            var result = mockMvc.perform(post("/api/v1/review/grade").session(sessionA)
+                .cookie(new Cookie("XSRF-TOKEN", MOCK_CSRF)).header("X-XSRF-TOKEN", MOCK_CSRF)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.newIntervalDays").value(1));
+            if (i == 1) result.andExpect(header().string("Idempotent-Replay", "true"));
+            scopedQueue(b.getId()).andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(0));
+        }
+        scopedQueue(a.getId()).andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(0));
+        mockMvc.perform(get("/api/v1/review/queue").session(sessionA))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(0));
+        assertThat(srsItemRepository.countByUserId(userA.getId())).isEqualTo(1);
+        assertThat(srsReviewHistoryRepository.countByUserId(userA.getId())).isEqualTo(1);
+        assertThat(learningActivityEventRepository.countByUserId(userA.getId())).isEqualTo(1);
+        SrsItem after = srsItemRepository.findById(item.getId()).orElseThrow();
+        assertThat(after.getIntervalDays()).isEqualTo(1);
+        membershipRepository.deleteById(new com.englishflow.vocabulary.VocabularyCollectionId(a.getId(), word.getId()));
+        membershipRepository.save(new VocabularyCollection(userA.getId(), a.getId(), word.getId()));
+        scopedQueue(a.getId()).andExpect(status().isOk()).andExpect(jsonPath("$.totalDue").value(0));
+        assertThat(srsItemRepository.findById(item.getId()).orElseThrow().getLastReviewedAt()).isEqualTo(after.getLastReviewedAt());
+    }
+
 }

@@ -1,5 +1,14 @@
 // Interface copy only. Learning content and stable API values are never translated.
 export const learningEn = {
+  learnReviewContext: "Review context",
+  learnReviewAll: "Review all",
+  learnReviewStudySet: "Review this study set",
+  learnBackToStudySet: "Back to study set",
+  learnNoStudySetVocabularyDue: "No vocabulary is due in this study set.",
+  learnStudySetUnavailable: "This study set is unavailable.",
+  learnCheckDueQueue: "Check due vocabulary again",
+  learnDueAtQueueLoad: "Due when this queue loaded: {count}",
+
   learnNoListeningExercises: "No listening exercises available yet.",
   learnOptionalDetails: "Optional details",
   learnExitQuizConfirm: "Return to the quiz list? Answers already saved to this attempt remain saved.",
@@ -468,6 +477,15 @@ export const learningEn = {
 } as const;
 
 export const learningVi: Record<keyof typeof learningEn, string> = {
+  learnReviewContext: "Phạm vi ôn tập",
+  learnReviewAll: "Ôn tập tất cả",
+  learnReviewStudySet: "Ôn tập bộ từ",
+  learnBackToStudySet: "Quay lại bộ từ",
+  learnNoStudySetVocabularyDue: "Không có từ nào đến hạn trong bộ này.",
+  learnStudySetUnavailable: "Không thể truy cập bộ từ này.",
+  learnCheckDueQueue: "Kiểm tra lại từ đến hạn",
+  learnDueAtQueueLoad: "Số từ đến hạn khi tải hàng đợi: {count}",
+
   learnNoListeningExercises: "Chưa có bài luyện nghe nào.",
   learnOptionalDetails: "Thông tin bổ sung (không bắt buộc)",
   learnExitQuizConfirm: "Về danh sách bài kiểm tra? Các câu trả lời đã lưu của lượt này vẫn được giữ.",

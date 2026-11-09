@@ -511,3 +511,19 @@ Remaining untranslated surfaces: public landing page and document metadata.
 English learning material, original user content, CEFR codes, import column names
 and stored metadata intentionally stay unchanged. Ad hoc Chrome smoke is not a
 full browser/device/screen-reader certification or a real backend regression.
+
+## M3-EVO-3A — Study Set review scope
+
+Collection detail now links to `/review?collectionId=<id>`. The URL distinguishes
+Study Set review from global `/review`; absent scope never auto-selects a set.
+Review renders typed vi-VN/en context, return navigation, scoped empty/error
+copy and the API's due-count snapshot. Session completion can reload the same
+scope for the next batch. Changing locale does not remount the session or reload
+the queue; changing scope intentionally starts a new selection session.
+
+Network retries retain every submission field, including duration, and block
+alternative grades while the original result is uncertain. Stable attempt IDs
+and shared SRS history remain authoritative on the backend. User-authored words
+and Study Set titles are not translated. See [the API contract](../api/API_CONTRACT.md)
+for access/error semantics. Browser smoke uses fixture APIs; it does not prove
+full backend E2E.
