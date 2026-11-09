@@ -6,6 +6,7 @@ export interface CollectionItem {
   title: string;
   description?: string | null;
   wordCount: number;
+  folderId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface CollectionPageResponse {
 }
 
 export interface CreateCollectionPayload {
+  folderId?: string | null;
   title: string;
   description?: string | null;
 }
@@ -42,6 +44,8 @@ export interface CollectionSummaryItem {
 }
 
 export interface ListCollectionsParams {
+  folderId?: string;
+  unfiled?: boolean;
   page?: number;
   size?: number;
   sort?: string;
@@ -54,9 +58,14 @@ export const collectionsApi = {
         page: params.page ?? 0,
         size: params.size ?? 20,
         sort: params.sort || "updatedAt,desc",
+        folderId: params.folderId,
+        unfiled: params.unfiled,
       },
     });
   },
+
+  move: (id: string, folderId: string | null): Promise<CollectionItem> =>
+    apiClient.put<CollectionItem>("/collections/" + encodeURIComponent(id) + "/folder", { folderId }),
 
   getById: (id: string): Promise<CollectionItem> => {
     return apiClient.get<CollectionItem>(`/collections/${encodeURIComponent(id)}`);

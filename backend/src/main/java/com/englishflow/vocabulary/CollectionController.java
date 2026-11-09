@@ -36,9 +36,11 @@ import java.util.UUID;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final FolderService folderService;
     private final UserRepository userRepository;
 
-    public CollectionController(CollectionService collectionService, UserRepository userRepository) {
+    public CollectionController(CollectionService collectionService, UserRepository userRepository, FolderService folderService) {
+        this.folderService = folderService;
         this.collectionService = collectionService;
         this.userRepository = userRepository;
     }
@@ -68,6 +70,8 @@ public class CollectionController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "updatedAt,desc") String sort,
+        @RequestParam(required = false) String folderId,
+        @RequestParam(defaultValue = "false") boolean unfiled,
         Authentication authentication
     ) {
         UUID userId = getAuthenticatedUserId(authentication);
@@ -91,8 +95,17 @@ public class CollectionController {
         }
 
         Pageable pageable = PageRequest.of(Math.max(0, page), boundedSize, sortObj);
-        CollectionPageResponse response = collectionService.listCollections(userId, pageable);
+        CollectionPageResponse response = collectionService.listCollections(userId, pageable, parseFolderFilter(folderId), unfiled);
         return ResponseEntity.ok(response);
+    }
+
+    private UUID parseFolderFilter(String value) {
+        if (value == null) return null;
+        try {
+            UUID id = UUID.fromString(value);
+            if (id.toString().equalsIgnoreCase(value)) return id;
+        } catch (IllegalArgumentException ignored) { }
+        throw new IllegalArgumentException("folderId must be a valid UUID.");
     }
 
     @GetMapping("/{id}")
@@ -114,6 +127,12 @@ public class CollectionController {
         UUID userId = getAuthenticatedUserId(authentication);
         CollectionResponse response = collectionService.updateCollection(userId, id, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/folder")
+    public CollectionResponse moveCollection(@PathVariable UUID id,
+        @RequestBody com.englishflow.vocabulary.dto.MoveCollectionRequest request, Authentication authentication) {
+        return folderService.move(getAuthenticatedUserId(authentication), id, request.folderId());
     }
 
     @DeleteMapping("/{id}")

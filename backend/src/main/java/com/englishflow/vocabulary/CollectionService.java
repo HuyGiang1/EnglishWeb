@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class CollectionService {
 
+    private final FolderService folderService;
     private final CollectionRepository collectionRepository;
     private final VocabularyCollectionRepository vocabularyCollectionRepository;
     private final VocabularyRepository vocabularyRepository;
@@ -34,8 +35,10 @@ public class CollectionService {
     public CollectionService(
         CollectionRepository collectionRepository,
         VocabularyCollectionRepository vocabularyCollectionRepository,
-        VocabularyRepository vocabularyRepository
+        VocabularyRepository vocabularyRepository,
+        FolderService folderService
     ) {
+        this.folderService = folderService;
         this.collectionRepository = collectionRepository;
         this.vocabularyCollectionRepository = vocabularyCollectionRepository;
         this.vocabularyRepository = vocabularyRepository;
@@ -43,19 +46,31 @@ public class CollectionService {
 
     @Transactional
     public CollectionResponse createCollection(UUID userId, CreateCollectionRequest request) {
+        UUID folderId = folderService.validateAssignment(userId, request.folderId());
         String trimmedTitle = request.title().trim();
         if (collectionRepository.existsByUserIdAndTitleIgnoreCase(userId, trimmedTitle)) {
             throw new DuplicateCollectionTitleException("A collection with title '" + trimmedTitle + "' already exists.");
         }
 
         Collection collection = new Collection(userId, trimmedTitle, request.description());
+        collection.setFolderId(folderId);
         Collection saved = collectionRepository.save(collection);
         return CollectionResponse.fromEntity(saved, 0L);
     }
 
     @Transactional(readOnly = true)
     public CollectionPageResponse listCollections(UUID userId, Pageable pageable) {
-        Page<Collection> page = collectionRepository.findByUserId(userId, pageable);
+        return listCollections(userId, pageable, null, false);
+    }
+
+    @Transactional(readOnly = true)
+    public CollectionPageResponse listCollections(UUID userId, Pageable pageable, UUID folderId, boolean unfiled) {
+        if (folderId != null && unfiled) throw new IllegalArgumentException("Choose either folderId or unfiled.");
+        if (folderId != null) folderService.get(userId, folderId);
+        Page<Collection> page = folderId != null
+            ? collectionRepository.findByUserIdAndFolderId(userId, folderId, pageable)
+            : unfiled ? collectionRepository.findByUserIdAndFolderIdIsNull(userId, pageable)
+            : collectionRepository.findByUserId(userId, pageable);
         if (page.isEmpty()) {
             return new CollectionPageResponse(
                 List.of(),

@@ -19,6 +19,7 @@ export function fixtureApi() {
     if (failures.has(path)) return { status: 500, body: { code: failures.get(path), message: "RAW_PRIVATE_SERVER_EXCEPTION" } };
     if (overrides.has(path)) return { status: 200, body: overrides.get(path) };
     let body;
+    if (path.endsWith("/folders") && method === "GET") return { status: 200, body: page([]) };
     if (path.endsWith("/auth/csrf")) return { status: 204, body: null };
     if (path.endsWith("/auth/me") || path.endsWith("/settings")) body = account;
     else if (path.endsWith("/settings/preferences")) { account = { ...account, ...payload }; body = account; }

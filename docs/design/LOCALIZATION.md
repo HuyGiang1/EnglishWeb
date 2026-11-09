@@ -527,3 +527,17 @@ and shared SRS history remain authoritative on the backend. User-authored words
 and Study Set titles are not translated. See [the API contract](../api/API_CONTRACT.md)
 for access/error semantics. Browser smoke uses fixture APIs; it does not prove
 full backend E2E.
+
+## M3-EVO-3B — Folder UI
+
+Folder panel, paging, dialogs, destination selector, validation, safe API errors
+and preservation confirmation use the existing typed vi-VN/en dictionaries.
+Folder names, descriptions, Study Set titles and vocabulary remain user content.
+Unfiled / Chưa phân thư mục is a virtual group, never a translated stored Folder.
+Changing language retains Folder name/description drafts, selected destination
+and current dialog. Existing locale/account precedence and Review state remain.
+
+Production-component tests cover both locales, CRUD, scoped lists, Unfiled,
+movement, paged destinations, invalid destinations, failure fallback and draft
+preservation. Browser evidence and remaining device/assistive-technology limits
+are recorded in the M3-EVO-3B delivery report.

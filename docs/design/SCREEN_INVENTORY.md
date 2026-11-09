@@ -639,3 +639,19 @@ Implementation is partitioned into structured engineering phases:
 * **Error State**: Validation errors rendered directly beneath specific form inputs.
 * **Responsive Behavior**: Settings tabs switch from horizontal bar to scrollable strip on mobile.
 * **Accessibility**: Field labels linked via `for` and `id` attributes; timezone selector includes search filtering.
+
+## M3-EVO-3B — Study Set library Folder organization
+
+The existing `/collections` library now includes a paginated Folder panel,
+All Study Sets, virtual Unfiled and a selected-Folder Study Set list. Folder
+create/rename/delete and Study Set move use existing dialogs; delete explicitly
+explains that Study Sets move to Unfiled and learning data survives. Creating a
+Study Set while viewing a Folder assigns that Folder. Metadata editing retains
+assignment; movement/unassignment uses a dedicated selector including Unfiled.
+
+Folder and Study Set pages are bounded and independently navigable; the move
+selector can page through all destinations. Existing search remains scoped to
+the current Study Set page and is labeled accordingly. A Folder request failure
+does not hide the independent All Study Sets list. Empty/loading/error/success
+states are localized and announced. Existing detail URLs and the scoped Review
+entry point are unchanged. This delivery does not add nested Folders or import.

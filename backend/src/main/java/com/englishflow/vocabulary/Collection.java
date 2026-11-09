@@ -17,6 +17,7 @@ import java.util.UUID;
  * Canonical table 'collections' per docs/architecture/DATABASE.md Section 3.2.
  */
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(name = "collections")
 public class Collection {
 
@@ -27,6 +28,13 @@ public class Collection {
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
+
+    @Column(name = "folder_id")
+    private UUID folderId;
+
+    public UUID getFolderId() { return folderId; }
+    public void setFolderId(UUID value) { folderId = value; }
+
 
     @Column(name = "title", nullable = false, length = 100)
     private String title;

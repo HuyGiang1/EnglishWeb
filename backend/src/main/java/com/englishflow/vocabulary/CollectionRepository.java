@@ -19,5 +19,9 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
 
     boolean existsByUserIdAndTitleIgnoreCaseAndIdNot(UUID userId, String title, UUID id);
 
+    Page<Collection> findByUserIdAndFolderId(UUID userId, UUID folderId, Pageable pageable);
+    Page<Collection> findByUserIdAndFolderIdIsNull(UUID userId, Pageable pageable);
+    long countByUserIdAndFolderId(UUID userId, UUID folderId);
+
     long countByUserId(UUID userId);
 }

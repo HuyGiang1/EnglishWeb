@@ -10,7 +10,8 @@ public record CollectionDetailResponse(
     String description,
     long wordCount,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    UUID folderId
 ) {
     public static CollectionDetailResponse fromEntity(Collection c, long wordCount) {
         return new CollectionDetailResponse(
@@ -19,7 +20,8 @@ public record CollectionDetailResponse(
             c.getDescription(),
             wordCount,
             c.getCreatedAt(),
-            c.getUpdatedAt()
+            c.getUpdatedAt(),
+            c.getFolderId()
         );
     }
 }

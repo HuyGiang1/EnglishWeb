@@ -58,7 +58,7 @@ class PostgreSQLConnectivityTest {
     }
 
     @Test
-    @DisplayName("Verify that only approved Flyway tables (app_users) exist and no premature business tables are created")
+    @DisplayName("Verify the complete approved Flyway schema through V12")
     void testSchemaTableIntegrity() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement();
@@ -77,6 +77,7 @@ class PostgreSQLConnectivityTest {
                 "srs_review_history",
                 "learning_activity_events",
                 "collections",
+                "folders",
                 "vocabulary_collections",
                 "learning_contents",
                 "dictation_attempts",

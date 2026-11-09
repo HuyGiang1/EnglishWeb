@@ -454,3 +454,51 @@ backend/src/main/resources/db/
 ```
 
 * **Rule**: Production migrations contain zero dummy test data. Educational reference sentences are seeded via profile-activated scripts or administrative ingestion APIs.
+
+## M3-EVO-3B — Optional Study Set Folders (approved task decision)
+
+V12 (`V12__add_study_set_folders.sql`) adds `folders` in the vocabulary domain
+and nullable `collections.folder_id`. Collections remain Study Sets with their
+existing IDs, ownership and many-to-many vocabulary membership. No parallel
+StudySet entity or nested/public/shared Folder model is introduced.
+
+| Folder column | Contract |
+| --- | --- |
+| `id` | UUID primary key |
+| `user_id` | Required FK to `app_users`, account-erasure cascade |
+| `name` | Required varchar(100), C collation, nonempty canonical ASCII whitespace |
+| `description` | Nullable varchar(1000) |
+| `name_key` | Stored generated varchar(100), ASCII A–Z folded to a–z |
+| `created_at` / `updated_at` | Required timestamptz |
+
+Normalization collapses ASCII whitespace U+0009–U+000D and U+0020 to one
+space and strips leading/trailing ASCII spaces. Other Unicode characters are
+preserved; this is deliberately not Unicode case folding or vocabulary
+normalization. Application normalization and the DB CHECK use that same ASCII
+whitespace rule. `UNIQUE(user_id, name_key)` enforces per-owner name uniqueness,
+including concurrent/direct SQL writes; identical names across owners are valid.
+
+`UNIQUE(folders.id, folders.user_id)` supports the composite FK
+`collections(folder_id, user_id) REFERENCES folders(id, user_id)`. There is no
+Folder-to-Collection delete cascade or composite SET NULL. Folder deletion
+transactionally clears only `folder_id` and updates collection timestamps, then
+deletes the Folder. A failure rolls the entire transaction back. Null assignment
+is virtual Unfiled, not a Folder row. V12 performs no data backfill or reset.
+
+The owner/name uniqueness index also serves owner Folder lookup.
+`idx_collections_user_folder(user_id, folder_id)` supports bounded filtered
+Study Set lists, counts and unassignment. Folder list counts use one aggregate
+query per page, avoiding per-Folder queries.
+
+Folder mutations, creation with assignment and dedicated move operations acquire
+the same transaction-scoped PostgreSQL advisory lock per owner before loading
+destinations. This serializes duplicate creation/rename, move and Folder deletion
+through these application paths. DB constraints remain authoritative for bypasses.
+Collection `@DynamicUpdate` prevents unrelated metadata/vocabulary timestamp
+writes from restoring stale Folder assignments. Concurrent same-Study-Set moves
+are serialized in lock-acquisition order; there is no client-order or optimistic
+version-conflict guarantee. Repeated deletion returns 404 after the first success.
+
+Integration evidence covers duplicate-create and move/delete races, DB tenant FK
+rejection, rollback after an injected delete failure, and V11→V12 upgrade with
+pre-existing Collection/vocabulary/membership/SRS/review-history rows preserved.

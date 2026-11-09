@@ -372,6 +372,58 @@ All collection endpoints support standard query parameters:
 
 ---
 
+## 4.1 Study Set Folders — M3-EVO-3B
+
+All routes derive owner identity from the authenticated session. Mutations require
+the existing synchronized CSRF header/cookie. Foreign-owned and nonexistent
+resources both return `404 NOT_FOUND` without disclosing ownership.
+
+| Method / route | Request | Success |
+| --- | --- | --- |
+| `GET /api/v1/folders?page=0&size=50` | Optional page/size | 200 paged Folder list |
+| `POST /api/v1/folders` | `{name, description?}` | 201 Folder |
+| `GET /api/v1/folders/{id}` | — | 200 Folder |
+| `PUT /api/v1/folders/{id}` | `{name, description?}` | 200 updated Folder |
+| `DELETE /api/v1/folders/{id}` | — | 204, Study Sets preserved |
+| `PUT /api/v1/collections/{id}/folder` | Required `{"folderId": UUID or null}` | 200 existing Collection DTO plus folderId |
+
+Folder fields: `id`, `name`, nullable `description`, `studySetCount`,
+`createdAt`, `updatedAt`. Lists use the existing page envelope
+`{content,page,size,totalElements,totalPages}`; page is clamped to >=0 and size
+to 1–100, with deterministic name/id ordering. Counts include only the owner's
+Study Sets and are aggregated for the page.
+
+Folder name is required, max 100 UTF-16 units in request validation; description
+is optional, max 1000. ASCII whitespace is collapsed and stripped at the ends.
+Duplicate checking folds ASCII A–Z only; other Unicode case distinctions remain.
+The database uses the matching canonical CHECK/generated-key unique constraint.
+A duplicate create/rename returns `409 FOLDER_NAME_EXISTS`. Invalid fields,
+identifiers, blank Folder filter and malformed UUID bodies return
+`400 VALIDATION_FAILED`. Unauthenticated reads return 401; CSRF failures return
+403. Constraint errors use safe existing envelopes, never raw SQL.
+
+Collection create accepts additive optional `folderId`; omission/null creates
+Unfiled. Collection list/detail/create/update/move responses add nullable
+`folderId`. Legacy metadata `PUT /collections/{id}` retains assignment: use the
+dedicated move route to change it. On move, omitted `folderId` is invalid;
+explicit JSON null unassigns. Blank strings and non-UUID/non-null types are
+invalid, not an unassignment shortcut. Destination and Collection must both
+belong to the caller. Deleted destinations return 404.
+
+`GET /collections` without filters remains the existing global list.
+Optional `folderId=<UUID>` selects one owned Folder; `unfiled=true` selects
+null assignment. Combining these filters is 400. Existing pagination/sort bounds
+and membership/Review routes remain unchanged.
+
+Folder deletion clears assignments and deletes only Folder metadata in one
+transaction. Study Set IDs, vocabulary membership, schedules and history survive.
+Owner-scoped transaction locks serialize application Folder mutations/moves;
+concurrent duplicate names yield one success and one 409. Move versus deletion
+either moves before deletion/unassignment or receives 404 afterwards. A second
+delete returns 404. No nested/shared/public Folder endpoints are supported.
+
+---
+
 ## 5. Review & SRS APIs (`/api/v1/review`)
 
 ---

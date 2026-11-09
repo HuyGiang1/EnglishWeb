@@ -6,6 +6,7 @@ import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { learningErrorKey } from "@/lib/i18n/learning-errors";
 
 import * as React from "react";
+import { FolderPanel, MoveStudySetDialog } from "@/components/vocabulary/folder-organization";
 import Link from "next/link";
 import {
   Plus,
@@ -45,6 +46,12 @@ export default function CollectionsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<TranslationKey | null>(null);
 
+  const [folderScope, setFolderScope] = React.useState("all");
+  const [page, setPage] = React.useState(0);
+  const [folderVersion, setFolderVersion] = React.useState(0);
+  const [movingItem, setMovingItem] = React.useState<CollectionItem | null>(null);
+  const queueVersion = React.useRef(0);
+
   // Search & Filter
   const [search, setSearch] = React.useState("");
 
@@ -66,21 +73,29 @@ export default function CollectionsPage() {
   const [deleteError, setDeleteError] = React.useState<TranslationKey | null>(null);
 
   const fetchCollections = React.useCallback(async () => {
+    const requestVersion = ++queueVersion.current;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await collectionsApi.list({ page: 0, size: 50 });
+      const response = await collectionsApi.list({ page, size: 50,
+        folderId: folderScope !== "all" && folderScope !== "unfiled" ? folderScope : undefined,
+        unfiled: folderScope === "unfiled" ? true : undefined,
+      });
+      if (requestVersion !== queueVersion.current) return;
+      if (response.content.length === 0 && page > 0) { setPage(page - 1); return; }
       setData(response);
+      setFolderVersion(value => value + 1);
     } catch (err) {
+      if (requestVersion !== queueVersion.current) return;
       if (err instanceof ApiError) {
         setError(learningErrorKey(err));
       } else {
         setError("learnFailedToLoadCollectionsPleaseCheckYourConnection");
       }
     } finally {
-      setIsLoading(false);
+      if (requestVersion === queueVersion.current) setIsLoading(false);
     }
-  }, []);
+  }, [page, folderScope]);
 
   React.useEffect(() => {
     fetchCollections();
@@ -104,6 +119,7 @@ export default function CollectionsPage() {
       await collectionsApi.create({
         title: newTitle.trim(),
         description: newDescription.trim() || null,
+        folderId: folderScope !== "all" && folderScope !== "unfiled" ? folderScope : null,
       });
       setIsCreateOpen(false);
       setNewTitle("");
@@ -222,6 +238,10 @@ export default function CollectionsPage() {
         </div>
       </div>
 
+      <FolderPanel scope={folderScope} onSelect={value => { setFolderScope(value); setPage(0); }}
+        version={folderVersion} onChanged={fetchCollections} />
+      <h2 className="font-semibold">{t(folderScope === "all" ? "folderAllStudySets" : folderScope === "unfiled" ? "folderUnfiled" : "folderSelectedStudySets")}</h2>
+      <p className="text-xs text-muted-foreground">{t("folderSearchPage")}</p>
       {/* Search Input Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
@@ -272,7 +292,7 @@ export default function CollectionsPage() {
           </div>
           <div>
             <h3 className="text-base font-semibold text-foreground">
-              {search ? t("learnNoMatchingCollections") : t("learnNoCollectionsYet")}
+              {search ? t("learnNoMatchingCollections") : t(folderScope === "all" ? "learnNoCollectionsYet" : "folderEmpty")}
             </h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
               {search
@@ -318,7 +338,7 @@ export default function CollectionsPage() {
                 </p>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="mt-5 pt-3 border-t border-border/60 flex flex-wrap gap-2 items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   {new Date(col.updatedAt).toLocaleDateString(locale, {
@@ -328,7 +348,8 @@ export default function CollectionsPage() {
                   })}
                 </span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setMovingItem(col)} aria-label={t("folderMoveNamed", { name: col.title })}>{t("folderMove")}</Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -361,6 +382,12 @@ export default function CollectionsPage() {
         </div>
       )}
 
+      {data && data.totalPages > 1 && <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" disabled={isLoading || page === 0} onClick={() => setPage(page - 1)}>{t("folderPrevious")}</Button>
+        <span className="text-sm">{page + 1} / {data.totalPages}</span>
+        <Button variant="outline" size="sm" disabled={isLoading || page + 1 >= data.totalPages} onClick={() => setPage(page + 1)}>{t("folderNext")}</Button>
+      </div>}
+      <MoveStudySetDialog item={movingItem} onClose={() => setMovingItem(null)} onMoved={fetchCollections} />
       {/* CREATE COLLECTION DIALOG */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="learning-module sm:max-w-md">

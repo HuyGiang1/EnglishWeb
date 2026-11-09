@@ -72,10 +72,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(com.englishflow.vocabulary.exception.FolderNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleFolderNotFound() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ApiErrorResponse.of("NOT_FOUND", "Folder not found.", 404));
+    }
+
+    @ExceptionHandler(com.englishflow.vocabulary.exception.FolderNameConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleFolderNameConflict() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ApiErrorResponse.of("FOLDER_NAME_EXISTS", "A folder with this name already exists.", 409));
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidIdentifier() {
+        return ResponseEntity.badRequest().body(
+            ApiErrorResponse.of("VALIDATION_FAILED", "A request parameter has an invalid format.", 400));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        log.warn("Database integrity violation occurred: {}", ex.getMessage());
+        log.warn("Database integrity violation occurred.");
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (msg.contains("uq_folder_user_name")) return handleFolderNameConflict();
+
         if (msg.contains("uq_app_users_email") || (msg.contains("app_users") && msg.contains("email"))) {
             ApiErrorResponse response = ApiErrorResponse.of(
                 "EMAIL_ALREADY_REGISTERED",
