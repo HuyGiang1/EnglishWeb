@@ -43,6 +43,9 @@ public class User {
     @Column(name = "preferred_audio_speed", nullable = false)
     private Double preferredAudioSpeed = 1.0;
 
+    @Column(name = "preferred_locale", length = 16)
+    private String preferredLocale;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
@@ -141,6 +144,14 @@ public class User {
 
     public void setPreferredAudioSpeed(Double preferredAudioSpeed) {
         this.preferredAudioSpeed = preferredAudioSpeed;
+    }
+
+    public String getPreferredLocale() {
+        return preferredLocale;
+    }
+
+    public void setPreferredLocale(String preferredLocale) {
+        this.preferredLocale = preferredLocale;
     }
 
     public boolean isActive() {

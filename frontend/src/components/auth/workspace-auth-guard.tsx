@@ -3,11 +3,13 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale-provider";
 import { useAuth } from "@/lib/auth/auth-context";
 
 export function WorkspaceAuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { t } = useLocale();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -24,7 +26,7 @@ export function WorkspaceAuthGuard({ children }: { children: React.ReactNode }) 
           </div>
           <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
-            <span>Verifying session...</span>
+            <span role="status">{t("sessionLoading")}</span>
           </div>
         </div>
       </div>

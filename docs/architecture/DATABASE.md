@@ -53,6 +53,14 @@ The EnglishFlow relational database schema is engineered for strict multi-tenant
 #### Table: `app_users`
 Stores user identity, authentication credentials, and learning environment settings.
 
+**M3-EVO-1B / Flyway V11** adds `preferred_locale VARCHAR(16) NULL` with no default
+or bulk backfill. A CHECK permits only NULL, `vi-VN` and `en`. NULL records that
+the account has not selected a locale; it must not be interpreted as an explicit
+English/Vietnamese preference. Existing accounts, IDs, vocabulary and learning
+history remain intact. New UI registrations provide their guest selection;
+older clients may omit it. Account deletion continues to delete the user row
+with existing cascades. Migrations V1–V10 remain immutable.
+
 ```sql
 CREATE TABLE app_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -45,6 +45,19 @@ To reconcile dense management workflows (browsing hundreds of vocabulary terms) 
 ```
 
 ### 2.1 The Workspace Shell
+
+**M3-EVO-1C-1 implementation note:** The current shell uses localized vi/en
+navigation, one contextual header label and a secondary Review link. The mobile
+drawer and desktop sidebar retain every existing destination and sign-out.
+Learner navigation excludes milestone/debug metadata and placeholder controls.
+Dashboard prioritizes one data-backed primary action, then secondary practice
+links and progress; counts and the GitHub-style heatmap remain unchanged.
+Settings keeps four labelled sections, account language switching, neutral
+feedback and a separate password-confirmed deletion dialog. Focus/skip links,
+keyboard tabs, dialog focus return and reduced motion are required. Historical
+blueprints below describe the broader design direction, not additional features
+implemented in this increment. See [LOCALIZATION.md](LOCALIZATION.md).
+
 * **Persistent Left Sidebar**: 
   * Desktop width: `240px` (`w-60`). Collapsible to icon-only mode (`64px` / `w-16`).
   * Mobile: Hidden off-canvas, accessible via hamburger trigger opening a clean slide-out drawer (`280px`).

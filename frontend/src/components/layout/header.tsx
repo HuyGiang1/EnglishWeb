@@ -3,111 +3,35 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Command, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth/auth-context";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { SidebarContent } from "./sidebar";
-
-const routeTitles: Record<string, string> = {
-  "/dashboard": "Workspace Overview",
-  "/vocabulary": "Vocabulary Library",
-  "/collections": "Vocabulary Collections",
-  "/dictation": "Listening Dictation",
-  "/shadowing": "Shadowing Practice",
-  "/quiz": "Diagnostic Quiz",
-  "/settings": "User Preferences",
-  "/review": "Spaced Repetition Review",
-};
+import { Menu } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SidebarContent, navWorkspaceItems, navStudyItems, navPreferenceItems } from "./sidebar";
+import { useLocale } from "@/lib/i18n/locale-provider";
 
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuth();
-
-  const currentTitle = routeTitles[pathname] || "EnglishFlow";
-
+  const { t } = useLocale();
+  const route = [...navWorkspaceItems, ...navStudyItems, ...navPreferenceItems]
+    .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   return (
-    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm sm:px-6">
-      {/* Left: Mobile Menu Trigger + Current Context */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex min-h-14 w-full flex-wrap items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-2 sm:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon"
-                className="lg:hidden size-8"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="size-4" />
-              </Button>
-            }
-          />
-          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-r border-border">
-            <SheetHeader className="sr-only">
-              <SheetTitle>Navigation Menu</SheetTitle>
-            </SheetHeader>
+          <SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden size-9" aria-label={t("openNavigation")}><Menu className="size-4" aria-hidden="true" /></Button>} />
+          <SheetContent side="left" className="w-64 max-w-[calc(100vw-2rem)] overflow-y-auto p-0 bg-sidebar border-r border-border">
+            <SheetHeader className="sr-only"><SheetTitle>{t("navigationMenu")}</SheetTitle></SheetHeader>
             <SidebarContent onNavClick={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-          >
-            EnglishFlow
-          </Link>
-          <span className="text-muted-foreground text-xs">/</span>
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">
-            {currentTitle}
-          </h1>
-        </div>
+        <nav aria-label={t("breadcrumbs")} className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+          <Link href="/dashboard" className="hidden sm:inline text-muted-foreground rounded focus-visible:ring-2">EnglishFlow</Link>
+          <span className="hidden sm:inline text-muted-foreground" aria-hidden="true">/</span>
+          <span aria-current="page" className="font-semibold">{route ? t(route.titleKey) : "EnglishFlow"}</span>
+        </nav>
       </div>
-
-      {/* Right: Monochrome Status Badges, User Greeting & Logout */}
-      <div className="flex items-center gap-2.5">
-        <div className="hidden sm:flex items-center gap-1.5 rounded border border-border bg-muted/60 px-2 py-1 text-[11px] font-mono text-muted-foreground">
-          <Command className="size-3" />
-          <span>K</span>
-          <span className="text-[10px] text-muted-foreground/70">Palette</span>
-        </div>
-
-        {user && (
-          <div className="hidden md:flex items-center gap-2 border-r border-border pr-2.5">
-            <span className="text-xs font-medium text-foreground">
-              {user.displayName}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => logout()}
-              className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
-              aria-label="Logout"
-            >
-              <LogOut className="size-3" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        )}
-
-        <Link href="/review">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs font-medium border-border hover:bg-muted"
-          >
-            Focus Review
-          </Button>
-        </Link>
-      </div>
+      <Link href="/review" className={buttonVariants({ variant: "outline", size: "sm" })}>{t("navReview")}</Link>
     </header>
   );
 }

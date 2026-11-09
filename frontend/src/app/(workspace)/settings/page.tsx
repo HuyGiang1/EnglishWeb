@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useId } from "react";
+import { useEffect, useState, useCallback, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -23,7 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { settingsApi, type UserSettings } from "@/lib/api/settings";
-import { ApiError } from "@/lib/api/client";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import { useAuth } from "@/lib/auth/auth-context";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { shellErrorKey } from "@/lib/i18n/shell-errors";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
 
 // Standard canonical IANA timezones curated for selection
 const POPULAR_TIMEZONES = [
@@ -48,20 +53,35 @@ const AUDIO_SPEEDS = [0.75, 1.0, 1.25] as const;
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
+  const { refreshSession } = useAuth();
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Active Tab state: general | preferences | security | account
   const [activeTab, setActiveTab] = useState<"general" | "preferences" | "security" | "account">("general");
 
+  const tabNames = ["general", "preferences", "security", "account"] as const;
+  function navigateTab(event: React.KeyboardEvent<HTMLButtonElement>) {
+    const current = tabNames.indexOf(activeTab);
+    const index = event.key === "Home" ? 0 : event.key === "End" ? tabNames.length - 1
+      : event.key === "ArrowRight" ? (current + 1) % tabNames.length
+      : event.key === "ArrowLeft" ? (current + tabNames.length - 1) % tabNames.length : -1;
+    if (index < 0) return;
+    event.preventDefault();
+    setActiveTab(tabNames[index]);
+    document.getElementById(`settings-tab-${tabNames[index]}`)?.focus();
+  }
+
   // Initial loading & core settings
   const [loading, setLoading] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<TranslationKey | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
 
   // Profile Form state
   const [displayName, setDisplayName] = useState<string>("");
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
-  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<TranslationKey | null>(null);
+  const [profileError, setProfileError] = useState<TranslationKey | null>(null);
 
   // Preferences Form state
   const [dailyGoal, setDailyGoal] = useState<number>(20);
@@ -69,8 +89,8 @@ export default function SettingsPage() {
   const [timezoneSearch, setTimezoneSearch] = useState<string>("");
   const [audioSpeed, setAudioSpeed] = useState<number>(1.0);
   const [savingPreferences, setSavingPreferences] = useState<boolean>(false);
-  const [preferencesSuccess, setPreferencesSuccess] = useState<string | null>(null);
-  const [preferencesError, setPreferencesError] = useState<string | null>(null);
+  const [preferencesSuccess, setPreferencesSuccess] = useState<TranslationKey | null>(null);
+  const [preferencesError, setPreferencesError] = useState<TranslationKey | null>(null);
 
   // Security Form state
   const [currentPassword, setCurrentPassword] = useState<string>("");
@@ -79,14 +99,14 @@ export default function SettingsPage() {
   const [showCurrentPass, setShowCurrentPass] = useState<boolean>(false);
   const [showNewPass, setShowNewPass] = useState<boolean>(false);
   const [savingPassword, setSavingPassword] = useState<boolean>(false);
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<TranslationKey | null>(null);
+  const [passwordError, setPasswordError] = useState<TranslationKey | null>(null);
 
   // Danger Zone / Account Deletion Modal
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [deletePassword, setDeletePassword] = useState<string>("");
   const [deletingAccount, setDeletingAccount] = useState<boolean>(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<TranslationKey | null>(null);
 
   // Accessible IDs
   const displayNameId = useId();
@@ -110,8 +130,7 @@ export default function SettingsPage() {
       setSelectedTimezone(data.timezone);
       setAudioSpeed(data.preferredAudioSpeed || 1.0);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load account settings";
-      setLoadError(msg);
+      setLoadError(shellErrorKey(err, "settingsLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -129,7 +148,7 @@ export default function SettingsPage() {
 
     const trimmed = displayName.trim();
     if (trimmed.length < 2 || trimmed.length > 100) {
-      setProfileError("Display name must be between 2 and 100 characters.");
+      setProfileError("profileNameInvalid");
       return;
     }
 
@@ -138,10 +157,9 @@ export default function SettingsPage() {
       const updated = await settingsApi.updateProfile({ displayName: trimmed });
       setSettings(updated);
       setDisplayName(updated.displayName);
-      setProfileSuccess("Profile updated successfully.");
+      setProfileSuccess("profileSaved");
     } catch (err: unknown) {
-      const msg = err instanceof ApiError ? err.message : "Failed to update profile.";
-      setProfileError(msg);
+      setProfileError(shellErrorKey(err, "profileSaveFailed"));
     } finally {
       setSavingProfile(false);
     }
@@ -154,7 +172,7 @@ export default function SettingsPage() {
     setPreferencesSuccess(null);
 
     if (dailyGoal < 1 || dailyGoal > 500) {
-      setPreferencesError("Daily goal must be between 1 and 500 items.");
+      setPreferencesError("dailyGoalInvalid");
       return;
     }
 
@@ -166,10 +184,9 @@ export default function SettingsPage() {
         preferredAudioSpeed: audioSpeed,
       });
       setSettings(updated);
-      setPreferencesSuccess("Learning preferences saved successfully.");
+      setPreferencesSuccess("preferencesSaved");
     } catch (err: unknown) {
-      const msg = err instanceof ApiError ? err.message : "Failed to save preferences.";
-      setPreferencesError(msg);
+      setPreferencesError(shellErrorKey(err, "preferencesSaveFailed"));
     } finally {
       setSavingPreferences(false);
     }
@@ -182,29 +199,29 @@ export default function SettingsPage() {
     setPasswordSuccess(null);
 
     if (!currentPassword) {
-      setPasswordError("Current password is required.");
+      setPasswordError("currentPasswordRequired");
       return;
     }
 
     if (newPassword.length < 8 || newPassword.length > 100) {
-      setPasswordError("New password must be between 8 and 100 characters.");
+      setPasswordError("newPasswordLength");
       return;
     }
 
     const hasNumber = /[0-9]/.test(newPassword);
     const hasSpecial = /[^a-zA-Z0-9]/.test(newPassword);
     if (!hasNumber || !hasSpecial) {
-      setPasswordError("New password must contain at least one digit and one special character.");
+      setPasswordError("newPasswordStrength");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("New password and confirmation do not match.");
+      setPasswordError("newPasswordMismatch");
       return;
     }
 
     if (newPassword === currentPassword) {
-      setPasswordError("New password cannot be the same as your current password.");
+      setPasswordError("newPasswordSame");
       return;
     }
 
@@ -215,13 +232,12 @@ export default function SettingsPage() {
         newPassword,
         confirmPassword,
       });
-      setPasswordSuccess("Password changed successfully. Your active session remains authenticated.");
+      setPasswordSuccess("passwordChanged");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
-      const msg = err instanceof ApiError ? err.message : "Failed to change password.";
-      setPasswordError(msg);
+      setPasswordError(shellErrorKey(err, "passwordChangeFailed"));
     } finally {
       setSavingPassword(false);
     }
@@ -231,17 +247,17 @@ export default function SettingsPage() {
   const handleDeleteAccount = async () => {
     setDeleteError(null);
     if (!deletePassword) {
-      setDeleteError("Current password is required to verify account closure.");
+      setDeleteError("currentPasswordRequired");
       return;
     }
 
     setDeletingAccount(true);
     try {
       await settingsApi.deleteAccount({ password: deletePassword });
-      router.push("/login?message=Account+closed");
+      await refreshSession();
+      router.replace("/login");
     } catch (err: unknown) {
-      const msg = err instanceof ApiError ? err.message : "Failed to delete account. Please verify your password.";
-      setDeleteError(msg);
+      setDeleteError(shellErrorKey(err, "deleteFailed"));
       setDeletingAccount(false);
     }
   };
@@ -255,15 +271,17 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">{t("navSettings")}</h1>
         <p className="text-sm text-[#737373] mt-1">
-          Configure your learner profile, daily study targets, study timezone, and security credentials.
+          {t("settingsDescription")}
         </p>
       </div>
 
+      <LanguageSwitcher />
+
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="space-y-6" data-testid="settings-skeleton">
+        <div role="status" className="space-y-6" data-testid="settings-skeleton"><span className="sr-only">{t("settingsLoading")}</span>
           <div className="flex gap-2 border-b border-[#E5E5E5] pb-2">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-9 w-28 bg-[#F0F0F0] rounded animate-pulse" />
@@ -272,7 +290,7 @@ export default function SettingsPage() {
           <Card className="border-[#E5E5E5]">
             <CardHeader className="space-y-2">
               <div className="h-6 w-48 bg-[#F0F0F0] rounded animate-pulse" />
-              <div className="h-4 w-72 bg-[#F0F0F0] rounded animate-pulse" />
+              <div className="h-4 w-72 max-w-full bg-[#F0F0F0] rounded animate-pulse" />
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="h-10 w-full bg-[#F0F0F0] rounded animate-pulse" />
@@ -281,19 +299,19 @@ export default function SettingsPage() {
           </Card>
         </div>
       ) : loadError ? (
-        <Card className="border-red-200 bg-red-50 text-red-900">
+        <Card role="alert" className="border-border bg-muted text-foreground">
           <CardContent className="p-6 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-foreground shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-sm">Failed to load account settings</p>
-              <p className="text-sm mt-1 text-red-700">{loadError}</p>
+              <p className="font-semibold text-sm">{t("settingsLoadFailed")}</p>
+              <p className="text-sm mt-1 text-foreground">{t(loadError)}</p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4 border-red-300 text-red-900 hover:bg-red-100"
+                className="mt-4 border-border text-foreground hover:bg-muted whitespace-normal h-auto min-h-9 py-2 max-w-full"
                 onClick={loadSettings}
               >
-                Retry
+                {t("retry")}
               </Button>
             </div>
           </CardContent>
@@ -304,11 +322,15 @@ export default function SettingsPage() {
           <div
             className="flex border-b border-[#E5E5E5] overflow-x-auto gap-1"
             role="tablist"
-            aria-label="Settings navigation tabs"
+            aria-label={t("settingsTabs")}
           >
             <button
               role="tab"
               aria-selected={activeTab === "general"}
+              id="settings-tab-general"
+              aria-controls="settings-panel-general"
+              tabIndex={activeTab === "general" ? 0 : -1}
+              onKeyDown={navigateTab}
               data-testid="tab-general"
               onClick={() => setActiveTab("general")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -318,12 +340,16 @@ export default function SettingsPage() {
               }`}
             >
               <User className="h-4 w-4" />
-              Profile
+              {t("settingsProfile")}
             </button>
 
             <button
               role="tab"
               aria-selected={activeTab === "preferences"}
+              id="settings-tab-preferences"
+              aria-controls="settings-panel-preferences"
+              tabIndex={activeTab === "preferences" ? 0 : -1}
+              onKeyDown={navigateTab}
               data-testid="tab-preferences"
               onClick={() => setActiveTab("preferences")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -333,12 +359,16 @@ export default function SettingsPage() {
               }`}
             >
               <Sliders className="h-4 w-4" />
-              Learning Preferences
+              {t("settingsPreferences")}
             </button>
 
             <button
               role="tab"
               aria-selected={activeTab === "security"}
+              id="settings-tab-security"
+              aria-controls="settings-panel-security"
+              tabIndex={activeTab === "security" ? 0 : -1}
+              onKeyDown={navigateTab}
               data-testid="tab-security"
               onClick={() => setActiveTab("security")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -348,12 +378,16 @@ export default function SettingsPage() {
               }`}
             >
               <Shield className="h-4 w-4" />
-              Security
+              {t("settingsSecurity")}
             </button>
 
             <button
               role="tab"
               aria-selected={activeTab === "account"}
+              id="settings-tab-account"
+              aria-controls="settings-panel-account"
+              tabIndex={activeTab === "account" ? 0 : -1}
+              onKeyDown={navigateTab}
               data-testid="tab-account"
               onClick={() => setActiveTab("account")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -363,39 +397,42 @@ export default function SettingsPage() {
               }`}
             >
               <Trash2 className="h-4 w-4" />
-              Account
+              {t("settingsAccount")}
             </button>
           </div>
 
+          <section role="tabpanel" id={`settings-panel-${activeTab}`} aria-labelledby={`settings-tab-${activeTab}`} tabIndex={-1}>
           {/* TAB 1: General & Profile */}
           {activeTab === "general" && (
             <Card className="border-[#E5E5E5] shadow-sm">
-              <form onSubmit={handleSaveProfile} data-testid="profile-form">
+              <form noValidate onSubmit={handleSaveProfile} data-testid="profile-form">
                 <CardHeader>
-                  <CardTitle className="text-lg">Account Profile</CardTitle>
+                  <CardTitle className="text-lg"><h2 className="flex items-center gap-2">{t("settingsProfileTitle")}</h2></CardTitle>
                   <CardDescription>
-                    Manage your public learner identity. Your email is your canonical account identifier.
+                    {t("settingsProfileDescription")}
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-6">
                   {profileSuccess && (
                     <div
-                      className="p-3 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-2 text-sm text-emerald-800"
-                      data-testid="profile-success-alert"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="status" data-testid="profile-success-alert"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>{profileSuccess}</span>
+                      <CheckCircle2 className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(profileSuccess)}</span>
                     </div>
                   )}
 
                   {profileError && (
                     <div
-                      className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-sm text-red-800"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="alert"
+                      id="settings-profile-error"
                       data-testid="profile-error-alert"
                     >
-                      <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                      <span>{profileError}</span>
+                      <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(profileError)}</span>
                     </div>
                   )}
 
@@ -403,23 +440,25 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <Label htmlFor={displayNameId} className="text-sm font-medium">
-                        Display Name
+                        {t("settingsDisplayName")}
                       </Label>
                       <span className="text-xs text-[#737373]">{displayName.trim().length} / 100</span>
                     </div>
                     <Input
                       id={displayNameId}
                       data-testid="input-display-name"
+                        aria-describedby={profileError ? "settings-profile-error" : undefined}
+                        aria-invalid={!!profileError}
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g. Minh Tran"
+                      placeholder={t("settingsNamePlaceholder")}
                       maxLength={100}
                       disabled={savingProfile}
                       className="max-w-md border-[#E5E5E5]"
                     />
                     <p className="text-xs text-[#737373]">
-                      Used across your dashboard metrics and study activity badges.
+                      {t("settingsNameHint")}
                     </p>
                   </div>
 
@@ -427,10 +466,10 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor={emailId} className="text-sm font-medium">
-                        Account Email
+                        {t("settingsEmail")}
                       </Label>
                       <Badge variant="outline" className="text-xs font-normal border-[#E5E5E5] text-[#737373]">
-                        Verified ID
+                        {t("readOnly")}
                       </Badge>
                     </div>
                     <Input
@@ -442,7 +481,7 @@ export default function SettingsPage() {
                       className="max-w-md bg-[#F9F9F9] border-[#E5E5E5] text-[#737373] cursor-not-allowed"
                     />
                     <p className="text-xs text-[#737373]">
-                      Email changes are locked for security integrity. Contact support for identity updates.
+                      {t("settingsEmailHint")}
                     </p>
                   </div>
                 </CardContent>
@@ -452,15 +491,15 @@ export default function SettingsPage() {
                     type="submit"
                     data-testid="save-profile-btn"
                     disabled={savingProfile || displayName.trim().length < 2}
-                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white"
+                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white whitespace-normal h-auto min-h-9 py-2 max-w-full"
                   >
                     {savingProfile ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving Profile...
+                        {t("savingProfile")}
                       </>
                     ) : (
-                      "Save Profile"
+                      t("saveProfile")
                     )}
                   </Button>
                 </CardFooter>
@@ -471,32 +510,34 @@ export default function SettingsPage() {
           {/* TAB 2: Learning Preferences */}
           {activeTab === "preferences" && (
             <Card className="border-[#E5E5E5] shadow-sm">
-              <form onSubmit={handleSavePreferences} data-testid="preferences-form">
+              <form noValidate onSubmit={handleSavePreferences} data-testid="preferences-form">
                 <CardHeader>
-                  <CardTitle className="text-lg">Learning Preferences</CardTitle>
+                  <CardTitle className="text-lg"><h2 className="flex items-center gap-2">{t("settingsPreferences")}</h2></CardTitle>
                   <CardDescription>
-                    Configure your daily review targets, study timezone for midnight streak rollover, and audio speeds.
+                    {t("preferencesDescription")}
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-6">
                   {preferencesSuccess && (
                     <div
-                      className="p-3 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-2 text-sm text-emerald-800"
-                      data-testid="preferences-success-alert"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="status" data-testid="preferences-success-alert"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>{preferencesSuccess}</span>
+                      <CheckCircle2 className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(preferencesSuccess)}</span>
                     </div>
                   )}
 
                   {preferencesError && (
                     <div
-                      className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-sm text-red-800"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="alert"
+                      id="settings-preferences-error"
                       data-testid="preferences-error-alert"
                     >
-                      <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                      <span>{preferencesError}</span>
+                      <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(preferencesError)}</span>
                     </div>
                   )}
 
@@ -505,13 +546,15 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-[#0A0A0A]" />
                       <Label htmlFor={dailyGoalId} className="text-sm font-medium">
-                        Daily Study Target (Words / Actions)
+                        {t("dailyTarget")}
                       </Label>
                     </div>
                     <div className="flex items-center gap-3 max-w-md">
                       <Input
                         id={dailyGoalId}
                         data-testid="input-daily-goal"
+                        aria-describedby={preferencesError ? "settings-preferences-error" : undefined}
+                        aria-invalid={!!preferencesError}
                         type="number"
                         min={1}
                         max={500}
@@ -520,17 +563,18 @@ export default function SettingsPage() {
                         disabled={savingPreferences}
                         className="w-32 border-[#E5E5E5]"
                       />
-                      <span className="text-sm text-[#737373]">items / day</span>
+                      <span className="text-sm text-[#737373]">{t("itemsPerDay")}</span>
                     </div>
 
                     {/* Quick Presets */}
-                    <div className="flex gap-2 items-center text-xs">
-                      <span className="text-[#737373]">Presets:</span>
+                    <div className="flex flex-wrap gap-2 items-center text-xs">
+                      <span className="text-[#737373]">{t("presets")}</span>
                       {[10, 20, 30, 50].map((preset) => (
                         <button
                           key={preset}
                           type="button"
                           data-testid={`preset-goal-${preset}`}
+                          aria-pressed={dailyGoal === preset}
                           onClick={() => setDailyGoal(preset)}
                           className={`px-2 py-1 rounded border transition-colors ${
                             dailyGoal === preset
@@ -538,12 +582,12 @@ export default function SettingsPage() {
                               : "bg-[#FAFAFA] text-[#0A0A0A] border-[#E5E5E5] hover:bg-[#F0F0F0]"
                           }`}
                         >
-                          {preset} {preset === 20 ? "(Default)" : ""}
+                          {preset} {preset === 20 ? t("defaultChoice") : ""}
                         </button>
                       ))}
                     </div>
                     <p className="text-xs text-[#737373]">
-                      Used for your daily goal badge on Dashboard and Heatmap. Changing this never alters past study logs.
+                      {t("dailyTargetHint")}
                     </p>
                   </div>
 
@@ -552,7 +596,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-[#0A0A0A]" />
                       <Label htmlFor={timezoneSearchId} className="text-sm font-medium">
-                        Study Timezone (IANA)
+                        {t("studyTimezone")}
                       </Label>
                     </div>
 
@@ -563,8 +607,10 @@ export default function SettingsPage() {
                         <Input
                           id={timezoneSearchId}
                           data-testid="input-timezone-search"
+                        aria-describedby={preferencesError ? "settings-preferences-error" : undefined}
+                        aria-invalid={!!preferencesError}
                           type="text"
-                          placeholder="Search timezone (e.g. Ho_Chi_Minh, London, New_York)..."
+                          placeholder={t("timezoneSearch")}
                           value={timezoneSearch}
                           onChange={(e) => setTimezoneSearch(e.target.value)}
                           className="pl-9 border-[#E5E5E5]"
@@ -578,7 +624,7 @@ export default function SettingsPage() {
                       >
                         {filteredTimezones.length === 0 ? (
                           <div className="p-3 text-xs text-[#737373] text-center">
-                            No matching timezones found
+                            {t("timezoneEmpty")}
                           </div>
                         ) : (
                           filteredTimezones.map((tz) => (
@@ -586,6 +632,7 @@ export default function SettingsPage() {
                               key={tz}
                               type="button"
                               data-testid={`timezone-opt-${tz}`}
+                              aria-pressed={selectedTimezone === tz}
                               onClick={() => setSelectedTimezone(tz)}
                               className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-[#F9F9F9] transition-colors ${
                                 selectedTimezone === tz ? "bg-[#F5F5F5] font-medium" : ""
@@ -603,10 +650,10 @@ export default function SettingsPage() {
 
                     <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-md max-w-md text-xs text-[#525252] space-y-1">
                       <p className="font-semibold text-[#0A0A0A]">
-                        Current selected timezone: <span data-testid="selected-timezone-badge">{selectedTimezone}</span>
+                        {t("selectedTimezone")} <span data-testid="selected-timezone-badge">{selectedTimezone}</span>
                       </p>
                       <p>
-                        Essential: Determines midnight rollover for daily streak calculation. Historical learning events remain permanently anchored to their original local dates.
+                        {t("timezoneHint")}
                       </p>
                     </div>
                   </div>
@@ -615,15 +662,16 @@ export default function SettingsPage() {
                   <div className="space-y-3 pt-4 border-t border-[#E5E5E5]">
                     <div className="flex items-center gap-2">
                       <Volume2 className="h-4 w-4 text-[#0A0A0A]" />
-                      <Label className="text-sm font-medium">Preferred Audio Playback Speed</Label>
+                      <Label className="text-sm font-medium">{t("audioSpeed")}</Label>
                     </div>
 
-                    <div className="flex gap-3" data-testid="audio-speed-chips">
+                    <div className="flex flex-wrap gap-2" data-testid="audio-speed-chips">
                       {AUDIO_SPEEDS.map((speed) => (
                         <button
                           key={speed}
                           type="button"
                           data-testid={`speed-chip-${speed}`}
+                          aria-pressed={audioSpeed === speed}
                           onClick={() => setAudioSpeed(speed)}
                           disabled={savingPreferences}
                           className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
@@ -632,12 +680,12 @@ export default function SettingsPage() {
                               : "bg-white text-[#0A0A0A] border-[#E5E5E5] hover:bg-[#FAFAFA]"
                           }`}
                         >
-                          {speed}x {speed === 0.75 ? "(Slow)" : speed === 1.0 ? "(Standard)" : "(Fast)"}
+                          {speed}x {speed === 0.75 ? t("speedSlow") : speed === 1.0 ? t("speedStandard") : t("speedFast")}
                         </button>
                       ))}
                     </div>
                     <p className="text-xs text-[#737373]">
-                      Initial playback rate for Dictation and Speech Shadowing players. You can still adjust speed during individual sessions.
+                      {t("audioSpeedHint")}
                     </p>
                   </div>
                 </CardContent>
@@ -647,15 +695,15 @@ export default function SettingsPage() {
                     type="submit"
                     data-testid="save-preferences-btn"
                     disabled={savingPreferences}
-                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white"
+                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white whitespace-normal h-auto min-h-9 py-2 max-w-full"
                   >
                     {savingPreferences ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving Preferences...
+                        {t("savingPreferences")}
                       </>
                     ) : (
-                      "Save Preferences"
+                      t("savePreferences")
                     )}
                   </Button>
                 </CardFooter>
@@ -666,44 +714,48 @@ export default function SettingsPage() {
           {/* TAB 3: Security & Password Change */}
           {activeTab === "security" && (
             <Card className="border-[#E5E5E5] shadow-sm">
-              <form onSubmit={handleSavePassword} data-testid="security-form">
+              <form noValidate onSubmit={handleSavePassword} data-testid="security-form">
                 <CardHeader>
-                  <CardTitle className="text-lg">Security & Authentication</CardTitle>
+                  <CardTitle className="text-lg"><h2 className="flex items-center gap-2">{t("securityTitle")}</h2></CardTitle>
                   <CardDescription>
-                    Update your password. Requires your active password to verify authorization.
+                    {t("securityDescription")}
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-6">
                   {passwordSuccess && (
                     <div
-                      className="p-3 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-2 text-sm text-emerald-800"
-                      data-testid="password-success-alert"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="status" data-testid="password-success-alert"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>{passwordSuccess}</span>
+                      <CheckCircle2 className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(passwordSuccess)}</span>
                     </div>
                   )}
 
                   {passwordError && (
                     <div
-                      className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-sm text-red-800"
+                      className="p-3 bg-muted border border-border rounded-md flex items-center gap-2 text-sm text-foreground"
+                      role="alert"
+                      id="settings-password-error"
                       data-testid="password-error-alert"
                     >
-                      <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                      <span>{passwordError}</span>
+                      <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                      <span>{t(passwordError)}</span>
                     </div>
                   )}
 
                   {/* Current Password */}
                   <div className="space-y-2">
                     <Label htmlFor={currentPassId} className="text-sm font-medium">
-                      Current Password
+                      {t("currentPassword")}
                     </Label>
                     <div className="relative max-w-md">
                       <Input
                         id={currentPassId}
                         data-testid="input-current-password"
+                        aria-describedby={passwordError ? "settings-password-error" : undefined}
+                        aria-invalid={!!passwordError}
                         type={showCurrentPass ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
@@ -714,8 +766,8 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => setShowCurrentPass(!showCurrentPass)}
-                        className="absolute right-3 top-2.5 text-[#737373] hover:text-[#0A0A0A]"
-                        aria-label="Toggle password visibility"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:ring-2"
+                        aria-label={t(showCurrentPass ? "hidePassword" : "showPassword")}
                       >
                         {showCurrentPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -725,24 +777,26 @@ export default function SettingsPage() {
                   {/* New Password */}
                   <div className="space-y-2">
                     <Label htmlFor={newPassId} className="text-sm font-medium">
-                      New Password
+                      {t("newPassword")}
                     </Label>
                     <div className="relative max-w-md">
                       <Input
                         id={newPassId}
                         data-testid="input-new-password"
+                        aria-describedby={passwordError ? "settings-password-error" : undefined}
+                        aria-invalid={!!passwordError}
                         type={showNewPass ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 8 characters with number & symbol"
+                        placeholder={t("newPasswordPlaceholder")}
                         disabled={savingPassword}
                         className="pr-10 border-[#E5E5E5]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPass(!showNewPass)}
-                        className="absolute right-3 top-2.5 text-[#737373] hover:text-[#0A0A0A]"
-                        aria-label="Toggle password visibility"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:ring-2"
+                        aria-label={t(showNewPass ? "hidePassword" : "showPassword")}
                       >
                         {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -753,26 +807,26 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2
                           className={`h-3.5 w-3.5 ${
-                            newPassword.length >= 8 ? "text-emerald-600" : "text-[#D4D4D4]"
+                            newPassword.length >= 8 ? "text-foreground" : "text-[#D4D4D4]"
                           }`}
                         />
-                        <span>At least 8 characters</span>
+                        <span>{t("passwordLengthRule")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2
                           className={`h-3.5 w-3.5 ${
-                            /[0-9]/.test(newPassword) ? "text-emerald-600" : "text-[#D4D4D4]"
+                            /[0-9]/.test(newPassword) ? "text-foreground" : "text-[#D4D4D4]"
                           }`}
                         />
-                        <span>At least one digit (0–9)</span>
+                        <span>{t("passwordDigitRule")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2
                           className={`h-3.5 w-3.5 ${
-                            /[^a-zA-Z0-9]/.test(newPassword) ? "text-emerald-600" : "text-[#D4D4D4]"
+                            /[^a-zA-Z0-9]/.test(newPassword) ? "text-foreground" : "text-[#D4D4D4]"
                           }`}
                         />
-                        <span>At least one special character</span>
+                        <span>{t("passwordSymbolRule")}</span>
                       </div>
                     </div>
                   </div>
@@ -780,16 +834,18 @@ export default function SettingsPage() {
                   {/* Confirm New Password */}
                   <div className="space-y-2">
                     <Label htmlFor={confirmPassId} className="text-sm font-medium">
-                      Confirm New Password
+                      {t("confirmNewPassword")}
                     </Label>
                     <div className="max-w-md">
                       <Input
                         id={confirmPassId}
                         data-testid="input-confirm-password"
+                        aria-describedby={passwordError ? "settings-password-error" : undefined}
+                        aria-invalid={!!passwordError}
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter new password"
+                        placeholder={t("confirmNewPlaceholder")}
                         disabled={savingPassword}
                         className="border-[#E5E5E5]"
                       />
@@ -802,15 +858,15 @@ export default function SettingsPage() {
                     type="submit"
                     data-testid="change-password-btn"
                     disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
-                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white"
+                    className="bg-[#0A0A0A] hover:bg-[#262626] text-white whitespace-normal h-auto min-h-9 py-2 max-w-full"
                   >
                     {savingPassword ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Updating Password...
+                        {t("changingPassword")}
                       </>
                     ) : (
-                      "Change Password"
+                      t("changePassword")
                     )}
                   </Button>
                 </CardFooter>
@@ -824,152 +880,152 @@ export default function SettingsPage() {
               {/* Account Overview */}
               <Card className="border-[#E5E5E5] shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg">Account Information</CardTitle>
-                  <CardDescription>System metadata and active subscription state.</CardDescription>
+                  <CardTitle className="text-lg"><h2 className="flex items-center gap-2">{t("accountInformation")}</h2></CardTitle>
+                  <CardDescription>{t("accountDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="flex justify-between py-2 border-b border-[#F0F0F0]">
-                    <span className="text-[#737373]">Account Status</span>
-                    <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800">
-                      Active
+                    <span className="text-[#737373]">{t("accountStatus")}</span>
+                    <Badge variant="outline" className="border-border bg-muted text-foreground">
+                      {t("signedIn")}
                     </Badge>
                   </div>
                   <div className="flex justify-between py-2 border-b border-[#F0F0F0]">
-                    <span className="text-[#737373]">Account Registered</span>
+                    <span className="text-[#737373]">{t("accountRegistered")}</span>
                     <span className="font-mono text-xs text-[#0A0A0A]">
-                      {settings?.createdAt ? new Date(settings.createdAt).toLocaleDateString() : "—"}
+                      {settings?.createdAt ? new Date(settings.createdAt).toLocaleDateString(locale, { timeZone: settings.timezone }) : "—"}
                     </span>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-[#737373]">Session Security</span>
-                    <span className="text-xs text-[#0A0A0A]">Spring Security HttpOnly Session + CSRF</span>
+                    <span className="text-[#737373]">{t("accountProtection")}</span>
+                    <span className="text-xs text-[#0A0A0A]">{t("protectedSession")}</span>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Danger Zone: Account Deletion */}
-              <Card className="border-red-200 bg-red-50/30 shadow-sm" data-testid="danger-zone-card">
+              <Card className="border-2 border-border bg-muted/30 shadow-sm" data-testid="danger-zone-card">
                 <CardHeader>
-                  <CardTitle className="text-lg text-red-900 flex items-center gap-2">
-                    <Trash2 className="h-5 w-5 text-red-600" />
-                    Danger Zone: Permanent Account Erasure
-                  </CardTitle>
-                  <CardDescription className="text-red-700">
-                    Permanently delete your account and all associated learning history in compliance with the EnglishFlow Complete Data Erasure policy.
+                  <CardTitle className="text-lg text-foreground flex items-center gap-2"><h2 className="flex items-center gap-2">
+                    <Trash2 className="h-5 w-5 text-foreground" />
+                    {t("accountDangerTitle")}
+                  </h2></CardTitle>
+                  <CardDescription className="text-foreground">
+                    {t("accountDangerDescription")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-red-800">
+                <CardContent className="space-y-3 text-sm text-foreground">
                   <p>
-                    Closing your account is <strong>permanent and irreversible</strong>. The following records will be immediately erased:
+                    {t("deleteWarning")}
                   </p>
                   <ul className="list-disc pl-5 space-y-1 text-xs">
-                    <li>All personal vocabulary items and custom collections</li>
-                    <li>All Spaced Repetition (SRS) flashcard schedules and review logs</li>
-                    <li>All daily dictation attempts and transcript diffs</li>
-                    <li>All speech shadowing audio takes and self-assessment scores</li>
-                    <li>All diagnostic quiz submissions and answer evaluations</li>
-                    <li>Your 52-week activity heatmap and study streak history</li>
+                    <li>{t("deleteVocabulary")}</li>
+                    <li>{t("deleteReviews")}</li>
+                    <li>{t("deleteDictation")}</li>
+                    <li>{t("deleteShadowing")}</li>
+                    <li>{t("deleteQuiz")}</li>
+                    <li>{t("deleteActivity")}</li>
                   </ul>
-                  <p className="text-xs text-red-600">
-                    * Global shared exercises and platform lesson audio will remain intact for the community.
+                  <p className="text-xs text-foreground">
+                    {t("sharedContentPreserved")}
                   </p>
                 </CardContent>
-                <CardFooter className="border-t border-red-200 pt-4">
+                <CardFooter className="border-t border-border pt-4">
                   <Button
                     variant="outline"
                     data-testid="open-delete-modal-btn"
+                    ref={deleteTriggerRef}
                     onClick={() => {
                       setShowDeleteModal(true);
                       setDeleteError(null);
                       setDeletePassword("");
                     }}
-                    className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                    className="border-border text-foreground hover:bg-foreground hover:text-background whitespace-normal h-auto min-h-9 py-2 max-w-full"
                   >
-                    Delete Account Permanently
+                    {t("openDelete")}
                   </Button>
                 </CardFooter>
               </Card>
 
               {/* Confirmation Modal */}
-              {showDeleteModal && (
-                <div
-                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="delete-dialog-title"
-                  data-testid="delete-account-dialog"
-                >
-                  <Card className="max-w-md w-full border-red-300 shadow-2xl bg-white animate-in fade-in zoom-in-95">
-                    <CardHeader>
-                      <CardTitle id="delete-dialog-title" className="text-lg text-red-700 flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-red-600" />
-                        Confirm Account Deletion
-                      </CardTitle>
-                      <CardDescription>
-                        This operation cannot be undone. Enter your current password to authorize permanent account closure.
+              <Dialog open={showDeleteModal} onOpenChange={(open) => { if (!deletingAccount) setShowDeleteModal(open); }}>
+                  <DialogContent showCloseButton={false} finalFocus={deleteTriggerRef} aria-busy={deletingAccount}
+                    aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description"
+                    data-testid="delete-account-dialog" className="w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto border-border bg-background">
+                    <CardHeader className="px-0">
+                      <DialogTitle id="delete-dialog-title" className="text-lg text-foreground flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-foreground" />
+                        {t("confirmDeleteTitle")}
+                      </DialogTitle>
+                      <CardDescription id="delete-dialog-description">
+                        {t("confirmDeleteDescription")}
                       </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
+                    <CardContent className="px-0 space-y-4">
                       {deleteError && (
                         <div
-                          className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-800 flex items-center gap-2"
-                          data-testid="delete-error-alert"
+                          className="p-3 bg-muted border border-border rounded-md text-xs text-foreground flex items-center gap-2"
+                          role="alert"
+                      id="settings-delete-error"
+                      data-testid="delete-error-alert"
                         >
-                          <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                          <span>{deleteError}</span>
+                          <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                          <span>{t(deleteError)}</span>
                         </div>
                       )}
 
                       <div className="space-y-2">
                         <Label htmlFor={deletePassId} className="text-sm font-medium">
-                          Verify Current Password
+                          {t("verifyPassword")}
                         </Label>
                         <Input
                           id={deletePassId}
                           data-testid="input-delete-password"
+                        aria-describedby={deleteError ? "settings-delete-error" : undefined}
+                        aria-invalid={!!deleteError}
                           type="password"
                           value={deletePassword}
                           onChange={(e) => setDeletePassword(e.target.value)}
-                          placeholder="Enter your account password"
+                          placeholder={t("deletePasswordPlaceholder")}
                           disabled={deletingAccount}
                           className="border-[#E5E5E5]"
                         />
                       </div>
                     </CardContent>
 
-                    <CardFooter className="border-t border-[#E5E5E5] pt-4 flex justify-end gap-2">
+                    <CardFooter className="px-0 border-t border-border pt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                       <Button
                         type="button"
                         variant="outline"
                         data-testid="cancel-delete-btn"
                         onClick={() => setShowDeleteModal(false)}
                         disabled={deletingAccount}
-                      >
-                        Cancel
+                       className="whitespace-normal h-auto min-h-9 py-2 max-w-full">
+                        {t("cancel")}
                       </Button>
                       <Button
                         type="button"
                         data-testid="confirm-delete-btn"
                         onClick={handleDeleteAccount}
                         disabled={deletingAccount || !deletePassword}
-                        className="bg-red-600 hover:bg-red-700 text-white"
+                        className="bg-foreground hover:bg-foreground/90 text-background whitespace-normal h-auto min-h-9 py-2 max-w-full"
                       >
                         {deletingAccount ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Deleting Account...
+                            {t("deletingAccount")}
                           </>
                         ) : (
-                          "Permanently Delete My Account"
+                          t("confirmDelete")
                         )}
                       </Button>
                     </CardFooter>
-                  </Card>
-                </div>
-              )}
+                  </DialogContent>
+              </Dialog>
             </div>
           )}
+          </section>
         </>
       )}
     </div>

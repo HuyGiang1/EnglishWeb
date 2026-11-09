@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { Locale } from "@/lib/i18n/config";
 
 export interface User {
   id: string;
@@ -6,6 +7,7 @@ export interface User {
   displayName: string;
   timezone: string;
   dailyGoalItems: number;
+  preferredLocale?: Locale | null;
   createdAt?: string;
 }
 
@@ -14,6 +16,7 @@ export interface RegisterPayload {
   password: string;
   displayName: string;
   timezone?: string;
+  preferredLocale?: Locale;
 }
 
 export interface LoginPayload {

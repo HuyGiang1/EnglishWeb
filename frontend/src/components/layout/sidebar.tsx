@@ -2,223 +2,70 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  BookOpen,
-  FolderKanban,
-  Headphones,
-  Mic,
-  HelpCircle,
-  Settings,
-  Sparkles,
-  LogOut,
-} from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderKanban, Headphones, Mic, HelpCircle, Settings, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 
 export interface NavItem {
-  title: string;
+  titleKey: TranslationKey;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
-  isUpcoming?: boolean;
 }
-
 export const navWorkspaceItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Vocabulary",
-    href: "/vocabulary",
-    icon: BookOpen,
-    badge: "M1",
-  },
-  {
-    title: "Collections",
-    href: "/collections",
-    icon: FolderKanban,
-    badge: "M2",
-    isUpcoming: true,
-  },
+  { titleKey: "navDashboard", href: "/dashboard", icon: LayoutDashboard },
+  { titleKey: "navVocabulary", href: "/vocabulary", icon: BookOpen },
+  { titleKey: "navCollections", href: "/collections", icon: FolderKanban },
 ];
-
 export const navStudyItems: NavItem[] = [
-  {
-    title: "SRS Review",
-    href: "/review",
-    icon: Sparkles,
-    badge: "Focus",
-  },
-  {
-    title: "Dictation",
-    href: "/dictation",
-    icon: Headphones,
-    badge: "M2",
-    isUpcoming: true,
-  },
-  {
-    title: "Shadowing",
-    href: "/shadowing",
-    icon: Mic,
-    badge: "Focus",
-    isUpcoming: false,
-  },
-  {
-    title: "Quiz",
-    href: "/quiz",
-    icon: HelpCircle,
-    badge: "Focus",
-    isUpcoming: false,
-  },
+  { titleKey: "navReview", href: "/review", icon: Sparkles },
+  { titleKey: "navDictation", href: "/dictation", icon: Headphones },
+  { titleKey: "navShadowing", href: "/shadowing", icon: Mic },
+  { titleKey: "navQuiz", href: "/quiz", icon: HelpCircle },
 ];
-
 export const navPreferenceItems: NavItem[] = [
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    badge: "M2",
-    isUpcoming: true,
-  },
+  { titleKey: "navSettings", href: "/settings", icon: Settings },
 ];
 
-interface SidebarContentProps {
-  onNavClick?: () => void;
-}
-
-export function SidebarContent({ onNavClick }: SidebarContentProps) {
+export function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-
-  const renderNavSection = (title: string, items: NavItem[]) => (
+  const { t } = useLocale();
+  const section = (title: TranslationKey, items: NavItem[]) => (
     <div className="space-y-1">
-      <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </p>
-      <nav className="space-y-0.5">
-        {items.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavClick}
-              className={cn(
-                "group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors outline-none",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                isActive
-                  ? "bg-foreground text-background font-semibold"
-                  : "text-foreground/80 hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={cn(
-                    "size-4 shrink-0 transition-colors",
-                    isActive
-                      ? "text-background"
-                      : "text-muted-foreground group-hover:text-foreground"
-                  )}
-                />
-                <span>{item.title}</span>
-              </div>
-              {item.badge && (
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.5 text-[10px] font-mono tracking-tight",
-                    isActive
-                      ? "bg-background/20 text-background"
-                      : "bg-muted text-muted-foreground border border-border"
-                  )}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
+      <p className="px-3 text-xs font-semibold text-muted-foreground">{t(title)}</p>
+      <nav aria-label={t(title)} className="space-y-0.5">
+        {items.map(({ href, titleKey, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(`${href}/`);
+          return <Link key={href} href={href} onClick={onNavClick} aria-current={active ? "page" : undefined}
+            className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+              active ? "bg-foreground text-background" : "text-foreground/80 hover:bg-muted")}>
+            <Icon className="size-4 shrink-0" aria-hidden="true" /><span>{t(titleKey)}</span>
+          </Link>;
         })}
       </nav>
     </div>
   );
-
   return (
-    <div className="flex h-full flex-col justify-between p-4">
+    <div className="flex min-h-full flex-col justify-between gap-6 p-4">
       <div className="space-y-6">
-        {/* App Branding */}
         <div className="flex items-center gap-2.5 px-3 py-1">
-          <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background font-bold text-xs tracking-tighter">
-            EF
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm tracking-tight text-foreground">
-              EnglishFlow
-            </span>
-            <span className="text-[10px] font-mono text-muted-foreground">
-              v0.1.0 · M1 Slice
-            </span>
-          </div>
+          <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background font-bold text-xs" aria-hidden="true">EF</span>
+          <span className="font-semibold text-sm">EnglishFlow</span>
         </div>
-
-        {/* Navigation Sections */}
-        <div className="space-y-5">
-          {renderNavSection("Workspace", navWorkspaceItems)}
-          {renderNavSection("Study Modules", navStudyItems)}
-          {renderNavSection("Preferences", navPreferenceItems)}
-        </div>
+        <div className="space-y-5">{section("navWorkspace", navWorkspaceItems)}{section("navStudy", navStudyItems)}{section("navPreferences", navPreferenceItems)}</div>
       </div>
-
-      {/* User Session Profile & Functional Logout */}
-      <div className="space-y-2 pt-4 border-t border-border">
-        {user && (
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/40">
-            <div className="flex flex-col min-w-0 pr-2">
-              <span className="text-xs font-semibold text-foreground truncate">
-                {user.displayName}
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate">
-                {user.email}
-              </span>
-            </div>
-            <button
-              onClick={() => logout()}
-              title="Sign Out"
-              aria-label="Sign Out"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              <LogOut className="size-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Footer System Status */}
-        <div className="rounded-md border border-border bg-card p-2.5 text-[11px]">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Backend</span>
-            <span className="font-mono text-[10px] text-foreground font-medium">
-              :8080 (Proxy)
-            </span>
-          </div>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-muted-foreground">Session</span>
-            <span className="font-mono text-[10px] text-foreground font-medium">
-              {user ? "Authenticated" : "Anonymous"}
-            </span>
-          </div>
-        </div>
-      </div>
+      {user && <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+        <div className="min-w-0"><p className="truncate text-xs font-semibold">{user.displayName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div>
+        <button type="button" onClick={() => logout()} title={t("signOut")} aria-label={t("signOut")}
+          className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+          <LogOut className="size-4" aria-hidden="true" />
+        </button>
+      </div>}
     </div>
   );
 }
-
 export function Sidebar() {
-  return (
-    <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-border bg-sidebar h-screen sticky top-0">
-      <SidebarContent />
-    </aside>
-  );
+  return <aside className="hidden lg:block w-60 shrink-0 border-r border-border bg-sidebar h-screen sticky top-0 overflow-y-auto"><SidebarContent /></aside>;
 }

@@ -6,6 +6,7 @@ import com.englishflow.auth.dto.UserResponse;
 import com.englishflow.auth.exception.EmailAlreadyRegisteredException;
 import com.englishflow.auth.exception.InvalidCredentialsException;
 import com.englishflow.user.User;
+import com.englishflow.user.SupportedLocale;
 import com.englishflow.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -60,6 +61,9 @@ public class AuthService {
             20
         );
 
+        if (request.preferredLocale() != null) {
+            user.setPreferredLocale(SupportedLocale.validate(request.preferredLocale()));
+        }
         User savedUser = userRepository.save(user);
 
         // Auto-authenticate registered user and establish session

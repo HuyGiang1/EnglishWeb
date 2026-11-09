@@ -9,6 +9,15 @@
 
 ## 1. Global Navigation Architecture
 
+**M3-EVO-1C-1 delivery note:** Dashboard, Settings and the shared shell now
+support vi-VN/en. Navigation terms are Tổng quan, Từ vựng, Bộ từ, Ôn tập, Luyện
+nghe, Luyện nói, Kiểm tra and Cài đặt. Existing URLs and permissions are unchanged.
+Dashboard keeps one primary study action and all progress/heatmap data; Settings
+keeps profile, preferences, language, password and password-confirmed deletion.
+Vocabulary and individual learning feature screens remain outside this delivery.
+No Folder/Study Set schema migration or M3-EVO-1C-2 work is included.
+
+
 EnglishFlow operates two distinct structural layouts:
 1. **Workspace Shell**: Standard layout for browsing, managing, and configuring. Contains a sticky top navigation bar (mobile) or persistent collapsible left sidebar (desktop), global search trigger (`Mod+K`), input-safe quick add trigger (`C` when not typing), and profile menu.
 2. **Focus Learning Shell**: Full-screen distraction-free canvas used for study sessions (Flashcard Review, Dictation, Shadowing, Quiz). The global sidebar and secondary navigation are completely unmounted. An escape latch with unsaved-work confirmation and a minimalist top progress bar are the only persistent chrome elements.

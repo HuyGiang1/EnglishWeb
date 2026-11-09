@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi, User, LoginPayload, RegisterPayload } from "@/lib/api/auth";
+import { useLocale } from "@/lib/i18n/locale-provider";
 import { ApiError } from "@/lib/api/client";
 
 interface AuthContextType {
@@ -23,70 +24,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { locale, synchronizeAccount } = useLocale();
+  const authVersion = useRef(0);
+  const invalidateAuthRequests = useCallback(() => { authVersion.current++; }, []);
 
   const refreshSession = useCallback(async (): Promise<User | null> => {
+    const version = ++authVersion.current;
     try {
       const currentUser = await authApi.getMe();
+      if (version !== authVersion.current) return null;
+      synchronizeAccount(currentUser);
       setUser(currentUser);
       setError(null);
       return currentUser;
     } catch {
+      if (version !== authVersion.current) return null;
+      synchronizeAccount(null);
       setUser(null);
       return null;
     } finally {
-      setIsLoading(false);
+      if (version === authVersion.current) setIsLoading(false);
     }
-  }, []);
+  }, [synchronizeAccount]);
 
   useEffect(() => {
     refreshSession();
-  }, [refreshSession]);
+    return invalidateAuthRequests;
+  }, [refreshSession, invalidateAuthRequests]);
 
   const login = useCallback(async (payload: LoginPayload): Promise<User> => {
+    const version = ++authVersion.current;
     setIsLoading(true);
     setError(null);
     try {
       const loggedInUser = await authApi.login(payload);
-      setUser(loggedInUser);
+      if (version === authVersion.current) {
+        synchronizeAccount(loggedInUser);
+        setUser(loggedInUser);
+      }
       return loggedInUser;
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to log in.";
-      setError(message);
+      if (version === authVersion.current) setError(message);
       throw err;
     } finally {
-      setIsLoading(false);
+      if (version === authVersion.current) setIsLoading(false);
     }
-  }, []);
+  }, [synchronizeAccount]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<User> => {
+    const version = ++authVersion.current;
     setIsLoading(true);
     setError(null);
     try {
-      const registeredUser = await authApi.register(payload);
-      setUser(registeredUser);
+      const registeredUser = await authApi.register({ ...payload, preferredLocale: locale });
+      if (version === authVersion.current) {
+        synchronizeAccount(registeredUser);
+        setUser(registeredUser);
+      }
       return registeredUser;
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to create account.";
-      setError(message);
+      if (version === authVersion.current) setError(message);
       throw err;
     } finally {
-      setIsLoading(false);
+      if (version === authVersion.current) setIsLoading(false);
     }
-  }, []);
+  }, [locale, synchronizeAccount]);
 
   const logout = useCallback(async (): Promise<void> => {
+    const version = ++authVersion.current;
+    synchronizeAccount(null);
     setIsLoading(true);
     try {
       await authApi.logout();
     } catch {
       // Ignore logout failure, proceed to clear local user state
     } finally {
+      if (version !== authVersion.current) return;
       setUser(null);
       setError(null);
       setIsLoading(false);
       router.push("/login");
     }
-  }, [router]);
+  }, [router, synchronizeAccount]);
 
   const clearError = useCallback(() => setError(null), []);
 

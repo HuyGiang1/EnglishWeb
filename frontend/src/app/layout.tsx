@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { localeCookieName, resolveLocale } from "@/lib/i18n/config";
+import { LocaleProvider } from "@/lib/i18n/locale-provider";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +9,7 @@ import "./globals.css";
 
 const inter = Inter({
   variable: "--font-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -20,19 +23,22 @@ export const metadata: Metadata = {
     "A distraction-free English learning platform for spaced repetition, active listening, and pronunciation practice.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = resolveLocale((await cookies()).get(localeCookieName)?.value);
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang={locale} className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-foreground selection:text-background">
-        <AuthProvider>
-          <TooltipProvider delay={200}>
-            {children}
-          </TooltipProvider>
-        </AuthProvider>
+        <LocaleProvider initialLocale={locale}>
+          <AuthProvider>
+            <TooltipProvider delay={200}>
+              {children}
+            </TooltipProvider>
+          </AuthProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

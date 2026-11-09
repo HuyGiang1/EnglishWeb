@@ -12,7 +12,8 @@ public record UserSettingsResponse(
     int dailyGoalItems,
     Double preferredAudioSpeed,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    String preferredLocale
 ) {
     public static UserSettingsResponse fromUser(User user) {
         return new UserSettingsResponse(
@@ -23,7 +24,8 @@ public record UserSettingsResponse(
             user.getDailyGoalItems(),
             user.getPreferredAudioSpeed() != null ? user.getPreferredAudioSpeed() : 1.0,
             user.getCreatedAt(),
-            user.getUpdatedAt()
+            user.getUpdatedAt(),
+            user.getPreferredLocale()
         );
     }
 }

@@ -8,7 +8,8 @@ public record UserResponse(
     String email,
     String displayName,
     String timezone,
-    int dailyGoalItems
+    int dailyGoalItems,
+    String preferredLocale
 ) {
     public static UserResponse fromUser(User user) {
         return new UserResponse(
@@ -16,7 +17,8 @@ public record UserResponse(
             user.getEmail(),
             user.getDisplayName(),
             user.getTimezone(),
-            user.getDailyGoalItems()
+            user.getDailyGoalItems(),
+            user.getPreferredLocale()
         );
     }
 }

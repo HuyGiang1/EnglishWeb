@@ -12,31 +12,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
+import { authErrorKey } from "@/lib/auth/auth-errors";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import { translate, type TranslationKey } from "@/lib/i18n/dictionaries";
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
 
 const registerSchema = z
   .object({
     displayName: z
       .string()
       .trim()
-      .min(2, "Display name must be at least 2 characters")
-      .max(60, "Display name cannot exceed 60 characters"),
+      .min(2, "nameShort")
+      .max(60, "nameLong"),
     email: z
       .string()
       .trim()
-      .email("Please enter a valid email address"),
+      .email("invalidEmail"),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(72, "Password cannot exceed 72 characters")
+      .min(8, "passwordShort")
+      .max(72, "passwordLong")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Must contain uppercase, lowercase, and a number"
+        "passwordStrength"
       ),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "passwordMismatch",
     path: ["confirmPassword"],
   });
 
@@ -44,9 +47,10 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
   const { register: registerUser, user, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<TranslationKey | null>(null);
 
   const {
     register,
@@ -81,26 +85,19 @@ export default function RegisterPage() {
       });
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setServerError("An account with this email address already exists.");
-        } else {
-          setServerError(err.message || "Registration failed. Please check your inputs.");
-        }
-      } else {
-        setServerError("An unexpected error occurred. Please try again.");
-      }
+      setServerError(authErrorKey(err));
     }
   };
 
   return (
     <Card className="border-border bg-card shadow-xs">
-      <CardHeader className="space-y-1">
+      <CardHeader className="space-y-3">
+        <LanguageSwitcher />
         <CardTitle className="text-xl font-bold tracking-tight text-foreground">
-          Create Account
+          <h1>{t("registerTitle")}</h1>
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
-          Sign up to begin your spaced repetition language acquisition journey.
+          {t("registerDescription")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -110,20 +107,20 @@ export default function RegisterPage() {
             className="mb-4 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
           >
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
-            <span>{serverError}</span>
+            <span>{t(serverError)}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form noValidate aria-busy={isSubmitting} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="displayName" className="text-xs font-medium text-foreground">
-              Display Name
+              {t("displayName")}
             </Label>
             <Input
               id="displayName"
               type="text"
               autoComplete="name"
-              placeholder="Minh Tran"
+              placeholder={t("namePlaceholder")}
               disabled={isSubmitting}
               className={errors.displayName ? "border-destructive focus-visible:ring-destructive/20" : ""}
               aria-invalid={!!errors.displayName}
@@ -132,20 +129,20 @@ export default function RegisterPage() {
             />
             {errors.displayName && (
               <p id="displayName-error" className="text-[11px] text-destructive">
-                {errors.displayName.message}
+                {translate(locale, errors.displayName.message ?? "authFallback")}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs font-medium text-foreground">
-              Email Address
+              {t("email")}
             </Label>
             <Input
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               disabled={isSubmitting}
               className={errors.email ? "border-destructive focus-visible:ring-destructive/20" : ""}
               aria-invalid={!!errors.email}
@@ -154,23 +151,23 @@ export default function RegisterPage() {
             />
             {errors.email && (
               <p id="email-error" className="text-[11px] text-destructive">
-                {errors.email.message}
+                {translate(locale, errors.email.message ?? "authFallback")}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-xs font-medium text-foreground">
-              Password
+              {t("password")}
             </Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="••••••••"
+                placeholder={t("passwordPlaceholder")}
                 disabled={isSubmitting}
-                className={`pr-9 ${errors.password ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
+                className={`pr-11 ${errors.password ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
@@ -178,9 +175,8 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                tabIndex={-1}
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+                aria-label={showPassword ? t("hidePassword") : t("showPassword")}
               >
                 {showPassword ? (
                   <EyeOff className="size-4" />
@@ -191,24 +187,24 @@ export default function RegisterPage() {
             </div>
             {errors.password ? (
               <p id="password-error" className="text-[11px] text-destructive">
-                {errors.password.message}
+                {translate(locale, errors.password.message ?? "authFallback")}
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground">
-                Minimum 8 characters with uppercase, lowercase, and number.
+                {t("passwordHint")}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="confirmPassword" className="text-xs font-medium text-foreground">
-              Confirm Password
+              {t("confirmPassword")}
             </Label>
             <Input
               id="confirmPassword"
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="••••••••"
+              placeholder={t("confirmPlaceholder")}
               disabled={isSubmitting}
               className={errors.confirmPassword ? "border-destructive focus-visible:ring-destructive/20" : ""}
               aria-invalid={!!errors.confirmPassword}
@@ -217,7 +213,7 @@ export default function RegisterPage() {
             />
             {errors.confirmPassword && (
               <p id="confirmPassword-error" className="text-[11px] text-destructive">
-                {errors.confirmPassword.message}
+                {translate(locale, errors.confirmPassword.message ?? "authFallback")}
               </p>
             )}
           </div>
@@ -230,21 +226,21 @@ export default function RegisterPage() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 size-3.5 animate-spin" />
-                Creating Account...
+                {t("creatingAccount")}
               </>
             ) : (
-              "Create Account"
+              t("registerTitle")
             )}
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center border-t border-border pt-4 text-xs text-muted-foreground">
-        <span>Already have an account? </span>
+      <CardFooter className="flex flex-wrap justify-center gap-y-1 border-t border-border pt-4 text-xs text-muted-foreground">
+        <span>{t("hasAccount")} </span>
         <Link
           href="/login"
           className="ml-1 font-semibold text-foreground underline underline-offset-4 hover:text-foreground/80"
         >
-          Sign in
+          {t("loginTitle")}
         </Link>
       </CardFooter>
     </Card>

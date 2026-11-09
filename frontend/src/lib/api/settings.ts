@@ -4,6 +4,7 @@
  */
 
 import { apiRequest } from "./client";
+import type { Locale } from "@/lib/i18n/config";
 
 export interface UserSettings {
   id: string;
@@ -12,6 +13,7 @@ export interface UserSettings {
   timezone: string;
   dailyGoalItems: number;
   preferredAudioSpeed: number;
+  preferredLocale: Locale | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +26,7 @@ export interface UpdatePreferencesPayload {
   timezone?: string;
   dailyGoalItems?: number;
   preferredAudioSpeed?: number;
+  preferredLocale?: Locale;
 }
 
 export interface UpdateSettingsPayload {
@@ -31,6 +34,7 @@ export interface UpdateSettingsPayload {
   timezone?: string;
   dailyGoalItems?: number;
   preferredAudioSpeed?: number;
+  preferredLocale?: Locale;
 }
 
 export interface ChangePasswordPayload {

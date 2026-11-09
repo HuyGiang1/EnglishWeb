@@ -74,6 +74,18 @@ All collection endpoints support standard query parameters:
 
 ## 2. Authentication APIs (`/api/v1/auth`)
 
+### M3-EVO-1B additive locale fields
+
+- Registration accepts optional nullable `preferredLocale`: exactly `vi-VN` or
+  `en` when non-null. The current UI supplies the selected guest locale. Omitted
+  or null values remain null for backward-compatible clients; they are not
+  converted to a database default. Unsupported values return 400
+  `VALIDATION_FAILED` using the existing error envelope.
+- Register, Login and Current User responses include `preferredLocale` as
+  `"vi-VN"`, `"en"` or `null`. Existing response fields are unchanged.
+- Login and session bootstrap do not write a locale or infer it from a cookie.
+  An explicit account preference wins on the client; null preserves guest locale.
+
 ---
 
 ### Endpoint: Register User
@@ -634,6 +646,26 @@ All collection endpoints support standard query parameters:
 ---
 
 ## 10. Settings APIs (`/api/v1/settings`)
+
+### M3-EVO-1B locale preferences
+
+`GET /settings` and settings update responses include nullable `preferredLocale`.
+Both existing `PUT /settings` and `PUT /settings/preferences` accept optional
+`preferredLocale` (`vi-VN` or `en`). Omitted/null means no change; this API does
+not clear an explicit preference. Other preference fields remain optional and
+retain their existing semantics. Invalid non-null locales produce HTTP 400
+`VALIDATION_FAILED` and roll back the transaction, including other supplied fields.
+
+Example locale-only request to `PUT /api/v1/settings/preferences`:
+
+```json
+{ "preferredLocale": "en" }
+```
+
+The account is always resolved from the authenticated session, never a client
+user ID. Mutations require `X-XSRF-TOKEN` matched to `XSRF-TOKEN` as before.
+Without authentication a request with valid CSRF receives 401; a mutation with
+missing CSRF may receive 403 before the authentication check.
 
 ---
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthCopy } from "@/components/auth/auth-copy";
 
 export default function AuthLayout({
   children,
@@ -18,7 +19,7 @@ export default function AuthLayout({
           </span>
         </Link>
         <p className="mt-2 text-xs font-mono text-muted-foreground">
-          Focus-driven English acquisition
+          <AuthCopy kind="tagline" />
         </p>
       </div>
 
@@ -29,7 +30,7 @@ export default function AuthLayout({
 
       {/* Footer Info */}
       <div className="mt-8 text-center text-xs text-muted-foreground">
-        <span>Protected by Spring Security session cookies & CSRF verification</span>
+        <span><AuthCopy kind="privacy" /></span>
       </div>
     </div>
   );

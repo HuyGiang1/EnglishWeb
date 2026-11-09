@@ -9,6 +9,8 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +21,12 @@ export interface HeatmapCalendarProps {
   isLoading: boolean;
   isError: boolean;
   error?: string | null;
+  errorKey?: TranslationKey | null;
   onRetry?: () => void;
   onSelectDay?: (day: DayActivity) => void;
   className?: string;
 }
 
-const WEEKDAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface CalendarColumn {
   weekIndex: number;
@@ -37,11 +38,13 @@ export function HeatmapCalendar({
   data,
   isLoading,
   isError,
-  error,
+  errorKey,
   onRetry,
   onSelectDay,
   className = "",
 }: HeatmapCalendarProps) {
+  const { locale, t } = useLocale();
+  const weekdayLabels = [0, 1, 2, 3, 4, 5, 6].map((day) => day % 2 === 0 && day < 5 ? new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(2026, 0, 5 + day)) : "");
   const [selectedDay, setSelectedDay] = useState<DayActivity | null>(null);
   const [hoveredDay, setHoveredDay] = useState<DayActivity | null>(null);
   const [activeDateKey, setActiveDateKey] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function HeatmapCalendar({
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Derive today from data or fallback
-  const todayKey = data?.endDate || new Date().toISOString().split("T")[0];
+  const todayKey = data ? Object.keys(data.days).sort().filter((key) => data.days[key].state !== "FUTURE_DATE").at(-1) ?? data.endDate : "";
 
   // Set default active keyboard focus key to today
   useEffect(() => {
@@ -110,7 +113,7 @@ export function HeatmapCalendar({
       if (firstValidDay) {
         const month = new Date(firstValidDay.date + "T00:00:00").getMonth();
         if (month !== lastMonth) {
-          cols[c].monthLabel = MONTH_NAMES[month];
+          cols[c].monthLabel = new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2026, month, 1));
           lastMonth = month;
         }
       }
@@ -122,7 +125,14 @@ export function HeatmapCalendar({
     }
 
     return cols;
-  }, [data, viewMode]);
+  }, [data, viewMode, locale]);
+
+  const visibleKeys = columns.flatMap((column) => column.days).filter((day): day is DayActivity => !!day && day.state !== "FUTURE_DATE").map((day) => day.date).sort();
+  const focusKey = activeDateKey && visibleKeys.includes(activeDateKey) ? activeDateKey : todayKey;
+  function closeDayDetails() {
+    setSelectedDay(null);
+    gridRef.current?.querySelector<HTMLElement>(`[data-date="${selectedDay?.date}"]`)?.focus();
+  }
 
 
   const handleCellClick = useCallback(
@@ -139,7 +149,7 @@ export function HeatmapCalendar({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, currentDay: DayActivity) => {
       if (!data?.days) return;
-      const sortedKeys = Object.keys(data.days).sort();
+      const sortedKeys = columns.flatMap((column) => column.days).filter((day): day is DayActivity => !!day && day.state !== "FUTURE_DATE").map((day) => day.date).sort();
       const currentIndex = sortedKeys.indexOf(currentDay.date);
       if (currentIndex === -1) return;
 
@@ -193,7 +203,7 @@ export function HeatmapCalendar({
         cellEl?.focus();
       }
     },
-    [data, todayKey, handleCellClick]
+    [data, todayKey, handleCellClick, columns]
   );
 
   // Helper to get visual cell class by intensity and state
@@ -228,34 +238,34 @@ export function HeatmapCalendar({
 
   const getCellAriaLabel = (day: DayActivity | null) => {
     if (!day) return "";
-    const formatted = new Date(day.date + "T00:00:00").toLocaleDateString(undefined, {
+    const formatted = new Date(day.date + "T00:00:00").toLocaleDateString(locale, {
       month: "long",
       day: "numeric",
       year: "numeric",
     });
 
     if (day.state === "FUTURE_DATE") {
-      return `${formatted}: Future date`;
+      return `${formatted}: ${t("futureDate")}`;
     }
     if (day.state === "PRE_REGISTRATION") {
-      return `${formatted}: Prior to account registration`;
+      return `${formatted}: ${t("beforeRegistration")}`;
     }
     if (day.actionCount === 0) {
-      return `${formatted}: Zero learning activity recorded`;
+      return `${formatted}: ${t("zeroActivity")}`;
     }
 
-    const goalStatus = day.goalCompleted ? "daily goal achieved" : "daily goal not achieved";
-    return `${formatted}: ${day.actionCount} verified study actions, Level ${day.intensityLevel} intensity, ${goalStatus}.`;
+    const goalStatus = t(day.goalCompleted ? "goalComplete" : "goalIncomplete");
+    return `${formatted}: ${t("cellActivity", { count: day.actionCount, level: day.intensityLevel, goal: goalStatus })}`;
   };
 
   // Loading skeleton state
   if (isLoading) {
     return (
-      <Card className={`border-border bg-card p-6 space-y-4 animate-pulse ${className}`} data-testid="heatmap-loading">
+      <Card className={`border-border bg-card p-6 space-y-4 animate-pulse ${className}`} data-testid="heatmap-loading" role="status"><span className="sr-only">{t("heatmapLoading")}</span>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1.5">
             <div className="h-4 w-52 bg-muted rounded" />
-            <div className="h-3 w-80 bg-muted/60 rounded" />
+            <div className="h-3 w-80 max-w-full bg-muted/60 rounded" />
           </div>
           <div className="flex gap-2">
             <div className="h-7 w-20 bg-muted rounded" />
@@ -273,13 +283,13 @@ export function HeatmapCalendar({
       <Card className={`border-border bg-card p-6 text-center space-y-3 ${className}`} data-testid="heatmap-error">
         <div className="flex items-center justify-center gap-2 text-destructive">
           <AlertCircle className="size-4" />
-          <h3 className="text-sm font-semibold text-foreground">Failed to Load Learning Heatmap</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("heatmapLoadFailed")}</h3>
         </div>
-        <p className="text-xs text-muted-foreground">{error || "Unable to retrieve longitudinal study telemetry."}</p>
+        <p className="text-xs text-muted-foreground">{t(errorKey ?? "heatmapLoadFailed")}</p>
         {onRetry && (
           <Button onClick={onRetry} size="sm" variant="outline" className="gap-2 text-xs mx-auto">
             <RotateCcw className="size-3.5" />
-            <span>Retry</span>
+            <span>{t("retry")}</span>
           </Button>
         )}
       </Card>
@@ -294,30 +304,30 @@ export function HeatmapCalendar({
           <div className="flex items-center gap-2">
             <CalendarIcon className="size-4 text-foreground" />
             <h3 className="text-base font-semibold text-foreground tracking-tight">
-              52-Week Learning Activity Heatmap
+              {t("heatmapTitle")}
             </h3>
           </div>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            Verified study telemetry logged in your local timezone ({data.userTimezone}). Page views and bulk imports award 0 units.
+            {t("heatmapDescription", { timezone: data.userTimezone })}
           </p>
         </div>
 
         {/* Longitudinal KPI Summary Pill Group */}
         <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
           <div className="px-2.5 py-1 rounded border border-border bg-muted/30 flex items-center gap-1.5" data-testid="kpi-active-days">
-            <span className="text-muted-foreground">Active Days:</span>
+            <span className="text-muted-foreground">{t("activeDays")}</span>
             <span className="font-semibold text-foreground">{data.totalActiveDays}</span>
           </div>
 
           <div className="px-2.5 py-1 rounded border border-border bg-muted/30 flex items-center gap-1.5" data-testid="kpi-current-streak">
             <Flame className="size-3.5 text-foreground" />
-            <span className="text-muted-foreground">Current:</span>
-            <span className="font-semibold text-foreground">{data.currentStreakDays}d</span>
+            <span className="text-muted-foreground">{t("currentStreak")}</span>
+            <span className="font-semibold text-foreground">{t("daysCount", { count: data.currentStreakDays })}</span>
           </div>
 
           <div className="px-2.5 py-1 rounded border border-border bg-muted/30 flex items-center gap-1.5" data-testid="kpi-longest-streak">
-            <span className="text-muted-foreground">Longest:</span>
-            <span className="font-semibold text-foreground">{data.longestStreakDays}d</span>
+            <span className="text-muted-foreground">{t("longestStreak")}</span>
+            <span className="font-semibold text-foreground">{t("daysCount", { count: data.longestStreakDays })}</span>
           </div>
 
           {/* Mobile view toggle */}
@@ -326,24 +336,24 @@ export function HeatmapCalendar({
               onClick={() => setViewMode("full")}
               className={`px-2 py-0.5 text-[10px] ${viewMode === "full" ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
             >
-              Full
+              {t("fullCalendar")}
             </button>
             <button
               onClick={() => setViewMode("90days")}
               className={`px-2 py-0.5 text-[10px] ${viewMode === "90days" ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
             >
-              90d
+              {t("recentWeeks")}
             </button>
           </div>
         </div>
       </div>
 
       {/* 2. Heatmap Grid Container */}
-      <div className="overflow-x-auto pb-2 focus:outline-none" tabIndex={0} aria-label="Heatmap calendar scroll container">
+      <div className="overflow-x-auto pb-2 focus-visible:outline-2 focus-visible:outline-offset-2" tabIndex={0} aria-label={t("calendarScroll")}>
         <div
           ref={gridRef}
           role="grid"
-          aria-label="Annual learning activity calendar"
+          aria-label={t("calendarGrid")}
           aria-readonly="true"
           className="inline-flex flex-col gap-1 min-w-[720px] select-none"
         >
@@ -362,7 +372,7 @@ export function HeatmapCalendar({
               <div key={rowIndex} role="row" className="flex items-center gap-1">
                 {/* Weekday indicator on left */}
                 <div className="w-6 text-[10px] font-mono text-muted-foreground text-right pr-1 select-none">
-                  {WEEKDAY_LABELS[rowIndex]}
+                  {weekdayLabels[rowIndex]}
                 </div>
 
                 {/* Day Cells across columns */}
@@ -372,7 +382,7 @@ export function HeatmapCalendar({
                     return <div key={`${col.weekIndex}-${rowIndex}`} className="size-3 sm:size-3.5 invisible" />;
                   }
 
-                  const isFocused = activeDateKey === day.date;
+                  const isFocused = focusKey === day.date;
                   const isFuture = day.state === "FUTURE_DATE";
 
                   return (
@@ -392,6 +402,8 @@ export function HeatmapCalendar({
                       onClick={() => handleCellClick(day)}
                       onKeyDown={(e) => handleKeyDown(e, day)}
                       onMouseEnter={() => setHoveredDay(day)}
+                      onFocus={() => { setHoveredDay(day); setActiveDateKey(day.date); }}
+                      aria-expanded={selectedDay?.date === day.date}
                       onMouseLeave={() => setHoveredDay(null)}
                       className={getCellClassName(day)}
                     >
@@ -415,7 +427,7 @@ export function HeatmapCalendar({
           {hoveredDay ? (
             <>
               <span className="font-semibold text-foreground">
-                {new Date(hoveredDay.date + "T00:00:00").toLocaleDateString(undefined, {
+                {new Date(hoveredDay.date + "T00:00:00").toLocaleDateString(locale, {
                   weekday: "short",
                   month: "short",
                   day: "numeric",
@@ -425,44 +437,44 @@ export function HeatmapCalendar({
               <span>·</span>
               <span>
                 {hoveredDay.state === "FUTURE_DATE"
-                  ? "Future date"
+                  ? t("futureDate")
                   : hoveredDay.state === "PRE_REGISTRATION"
-                  ? "Before registration"
-                  : `${hoveredDay.actionCount} verified action${hoveredDay.actionCount === 1 ? "" : "s"}`}
+                  ? t("beforeRegistration")
+                  : t("actionsCount", { count: hoveredDay.actionCount })}
               </span>
               {hoveredDay.goalCompleted && (
                 <span className="inline-flex items-center gap-1 text-foreground font-medium pl-1">
                   <CheckCircle2 className="size-3 text-foreground" />
-                  Goal met
+                  {t("goalComplete")}
                 </span>
               )}
             </>
           ) : (
             <span className="text-muted-foreground/80">
-              Hover or focus a calendar cell to inspect daily verified activity.
+              {t("calendarHint")}
             </span>
           )}
         </div>
 
         {/* Grayscale Ramp Legend */}
         <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground select-none" data-testid="heatmap-legend">
-          <span>Less</span>
+          <span>{t("lessActivity")}</span>
           <div className="flex items-center gap-1">
-            <span className="size-3 rounded-[2px] bg-[#f5f5f5] dark:bg-zinc-800 border border-border/60" title="Level 0: 0 actions" />
-            <span className="size-3 rounded-[2px] bg-[#d4d4d4] dark:bg-zinc-600 border border-neutral-300 dark:border-zinc-500" title="Level 1: 1–9 actions" />
-            <span className="size-3 rounded-[2px] bg-[#a3a3a3] dark:bg-zinc-500 border border-neutral-400 dark:border-zinc-400" title="Level 2: 10–19 actions" />
-            <span className="size-3 rounded-[2px] bg-[#525252] dark:bg-zinc-300 border border-neutral-600 dark:border-zinc-200" title="Level 3: 20–39 actions" />
-            <span className="size-3 rounded-[2px] bg-[#171717] dark:bg-white border border-neutral-900 dark:border-white" title="Level 4: 40+ actions" />
+            <span className="size-3 rounded-[2px] bg-[#f5f5f5] dark:bg-zinc-800 border border-border/60" title={t("intensityLevel", { level: 0, range: "0" })} />
+            <span className="size-3 rounded-[2px] bg-[#d4d4d4] dark:bg-zinc-600 border border-neutral-300 dark:border-zinc-500" title={t("intensityLevel", { level: 1, range: "1–9" })} />
+            <span className="size-3 rounded-[2px] bg-[#a3a3a3] dark:bg-zinc-500 border border-neutral-400 dark:border-zinc-400" title={t("intensityLevel", { level: 2, range: "10–19" })} />
+            <span className="size-3 rounded-[2px] bg-[#525252] dark:bg-zinc-300 border border-neutral-600 dark:border-zinc-200" title={t("intensityLevel", { level: 3, range: "20–39" })} />
+            <span className="size-3 rounded-[2px] bg-[#171717] dark:bg-white border border-neutral-900 dark:border-white" title={t("intensityLevel", { level: 4, range: "40+" })} />
           </div>
-          <span>More</span>
+          <span>{t("moreActivity")}</span>
         </div>
       </div>
 
       {/* 4. Cell Details Inspection Drawer / Popover Modal */}
       {selectedDay && (
         <div
-          role="dialog"
-          aria-modal="true"
+          role="region"
+          onKeyDown={(event) => { if (event.key === "Escape") closeDayDetails(); }}
           aria-labelledby="day-details-title"
           className="p-4 rounded-md border border-border bg-card/95 shadow-sm space-y-3 mt-2"
           data-testid="selected-day-details"
@@ -470,7 +482,7 @@ export function HeatmapCalendar({
           <div className="flex items-center justify-between">
             <div>
               <h4 id="day-details-title" className="text-sm font-bold text-foreground">
-                {new Date(selectedDay.date + "T00:00:00").toLocaleDateString(undefined, {
+                {new Date(selectedDay.date + "T00:00:00").toLocaleDateString(locale, {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
@@ -478,26 +490,26 @@ export function HeatmapCalendar({
                 })}
               </h4>
               <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                Total verified activity: {selectedDay.actionCount} action{selectedDay.actionCount === 1 ? "" : "s"} · Intensity Level {selectedDay.intensityLevel}
+                {t("daySummary", { count: selectedDay.actionCount, level: selectedDay.intensityLevel })}
               </p>
             </div>
             <div className="flex items-center gap-2">
               {selectedDay.goalCompleted ? (
                 <Badge variant="outline" className="gap-1 text-[10px] font-mono border-border bg-muted/50 text-foreground">
                   <CheckCircle2 className="size-3 text-foreground" />
-                  Goal Achieved
+                  {t("goalComplete")}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-[10px] font-mono border-border text-muted-foreground">
-                  Goal Incomplete
+                  {t("goalIncomplete")}
                 </Badge>
               )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedDay(null)}
+                onClick={closeDayDetails}
                 className="size-7 p-0 text-muted-foreground hover:text-foreground"
-                aria-label="Close day details"
+                aria-label={t("closeDayDetails")}
               >
                 <X className="size-3.5" />
               </Button>
@@ -507,19 +519,19 @@ export function HeatmapCalendar({
           {/* Breakdown by Modality */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border text-xs font-mono">
             <div className="p-2 rounded border border-border bg-muted/20 space-y-0.5">
-              <span className="text-[10px] text-muted-foreground">Flashcards</span>
+              <span className="text-[10px] text-muted-foreground">{t("navReview")}</span>
               <p className="text-sm font-semibold text-foreground">{selectedDay.breakdown.flashcardReviews}</p>
             </div>
             <div className="p-2 rounded border border-border bg-muted/20 space-y-0.5">
-              <span className="text-[10px] text-muted-foreground">Dictation</span>
+              <span className="text-[10px] text-muted-foreground">{t("navDictation")}</span>
               <p className="text-sm font-semibold text-foreground">{selectedDay.breakdown.dictationExercises}</p>
             </div>
             <div className="p-2 rounded border border-border bg-muted/20 space-y-0.5">
-              <span className="text-[10px] text-muted-foreground">Shadowing</span>
+              <span className="text-[10px] text-muted-foreground">{t("navShadowing")}</span>
               <p className="text-sm font-semibold text-foreground">{selectedDay.breakdown.shadowingTakes}</p>
             </div>
             <div className="p-2 rounded border border-border bg-muted/20 space-y-0.5">
-              <span className="text-[10px] text-muted-foreground">Quizzes</span>
+              <span className="text-[10px] text-muted-foreground">{t("navQuiz")}</span>
               <p className="text-sm font-semibold text-foreground">{selectedDay.breakdown.quizzesCompleted ?? selectedDay.breakdown.quizQuestions}</p>
             </div>
           </div>

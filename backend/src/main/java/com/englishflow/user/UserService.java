@@ -75,6 +75,10 @@ public class UserService {
             user.setPreferredAudioSpeed(request.preferredAudioSpeed());
         }
 
+        if (request.preferredLocale() != null) {
+            user.setPreferredLocale(SupportedLocale.validate(request.preferredLocale()));
+        }
+
         User saved = userRepository.save(user);
         return UserSettingsResponse.fromUser(saved);
     }
@@ -103,6 +107,10 @@ public class UserService {
         if (request.preferredAudioSpeed() != null) {
             validateAudioSpeed(request.preferredAudioSpeed());
             user.setPreferredAudioSpeed(request.preferredAudioSpeed());
+        }
+
+        if (request.preferredLocale() != null) {
+            user.setPreferredLocale(SupportedLocale.validate(request.preferredLocale()));
         }
 
         User saved = userRepository.save(user);

@@ -12,20 +12,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
+import { authErrorKey } from "@/lib/auth/auth-errors";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import { translate, type TranslationKey } from "@/lib/i18n/dictionaries";
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
 
 const loginSchema = z.object({
-  email: z.string().trim().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().trim().email("invalidEmail"),
+  password: z.string().min(1, "passwordRequired"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
   const { login, user, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<TranslationKey | null>(null);
 
   const {
     register,
@@ -52,22 +56,19 @@ export default function LoginPage() {
       await login(values);
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setServerError(err.message || "Invalid email or password.");
-      } else {
-        setServerError("An unexpected error occurred. Please try again.");
-      }
+      setServerError(authErrorKey(err));
     }
   };
 
   return (
     <Card className="border-border bg-card shadow-xs">
-      <CardHeader className="space-y-1">
+      <CardHeader className="space-y-3">
+        <LanguageSwitcher />
         <CardTitle className="text-xl font-bold tracking-tight text-foreground">
-          Sign In
+          <h1>{t("loginTitle")}</h1>
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
-          Enter your email and password to access your learning workspace.
+          {t("loginDescription")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -77,20 +78,20 @@ export default function LoginPage() {
             className="mb-4 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
           >
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
-            <span>{serverError}</span>
+            <span>{t(serverError)}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form noValidate aria-busy={isSubmitting} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs font-medium text-foreground">
-              Email Address
+              {t("email")}
             </Label>
             <Input
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               disabled={isSubmitting}
               className={errors.email ? "border-destructive focus-visible:ring-destructive/20" : ""}
               aria-invalid={!!errors.email}
@@ -99,7 +100,7 @@ export default function LoginPage() {
             />
             {errors.email && (
               <p id="email-error" className="text-[11px] text-destructive">
-                {errors.email.message}
+                {translate(locale, errors.email.message ?? "authFallback")}
               </p>
             )}
           </div>
@@ -107,7 +108,7 @@ export default function LoginPage() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-xs font-medium text-foreground">
-                Password
+                {t("password")}
               </Label>
             </div>
             <div className="relative">
@@ -115,9 +116,9 @@ export default function LoginPage() {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder={t("passwordPlaceholder")}
                 disabled={isSubmitting}
-                className={`pr-9 ${errors.password ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
+                className={`pr-11 ${errors.password ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
@@ -125,9 +126,8 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                tabIndex={-1}
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+                aria-label={showPassword ? t("hidePassword") : t("showPassword")}
               >
                 {showPassword ? (
                   <EyeOff className="size-4" />
@@ -138,7 +138,7 @@ export default function LoginPage() {
             </div>
             {errors.password && (
               <p id="password-error" className="text-[11px] text-destructive">
-                {errors.password.message}
+                {translate(locale, errors.password.message ?? "authFallback")}
               </p>
             )}
           </div>
@@ -151,21 +151,21 @@ export default function LoginPage() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 size-3.5 animate-spin" />
-                Authenticating...
+                {t("signingIn")}
               </>
             ) : (
-              "Sign In"
+              t("loginTitle")
             )}
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center border-t border-border pt-4 text-xs text-muted-foreground">
-        <span>Don&apos;t have an account? </span>
+      <CardFooter className="flex flex-wrap justify-center gap-y-1 border-t border-border pt-4 text-xs text-muted-foreground">
+        <span>{t("noAccount")} </span>
         <Link
           href="/register"
           className="ml-1 font-semibold text-foreground underline underline-offset-4 hover:text-foreground/80"
         >
-          Create one
+          {t("registerTitle")}
         </Link>
       </CardFooter>
     </Card>
