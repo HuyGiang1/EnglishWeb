@@ -1,5 +1,6 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -31,6 +32,7 @@ export function Header() {
           <span aria-current="page" className="font-semibold">{route ? t(route.titleKey) : "EnglishFlow"}</span>
         </nav>
       </div>
+      {(pathname.startsWith("/vocabulary") || pathname.startsWith("/collections")) && <LanguageSwitcher />}
       <Link href="/review" className={buttonVariants({ variant: "outline", size: "sm" })}>{t("navReview")}</Link>
     </header>
   );

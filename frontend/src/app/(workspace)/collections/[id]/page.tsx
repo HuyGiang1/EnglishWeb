@@ -1,5 +1,10 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -42,6 +47,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 
 export default function CollectionDetailPage() {
+  const { t, locale } = useLocale();
   const params = useParams();
   const router = useRouter();
   const collectionId = params.id as string;
@@ -49,7 +55,7 @@ export default function CollectionDetailPage() {
   const [collection, setCollection] = React.useState<CollectionItem | null>(null);
   const [vocabData, setVocabData] = React.useState<VocabularyPageResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<TranslationKey | null>(null);
 
   // Search filter inside collection
   const [search, setSearch] = React.useState("");
@@ -61,13 +67,13 @@ export default function CollectionDetailPage() {
   const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false);
   const [librarySearch, setLibrarySearch] = React.useState("");
   const [isAssigning, setIsAssigning] = React.useState(false);
-  const [addWordsError, setAddWordsError] = React.useState<string | null>(null);
+  const [addWordsError, setAddWordsError] = React.useState<TranslationKey | null>(null);
 
   // Edit Collection state
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState("");
   const [editDescription, setEditDescription] = React.useState("");
-  const [editError, setEditError] = React.useState<string | null>(null);
+  const [editError, setEditError] = React.useState<TranslationKey | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   // Remove Word state
@@ -77,7 +83,7 @@ export default function CollectionDetailPage() {
   // Delete Collection state
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
-  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<TranslationKey | null>(null);
 
   const fetchCollectionData = React.useCallback(async () => {
     if (!collectionId) return;
@@ -93,12 +99,12 @@ export default function CollectionDetailPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
-          setError("Collection not found or access denied.");
+          setError("learnCollectionNotFoundOrAccessDenied");
         } else {
-          setError(err.message);
+          setError(learningErrorKey(err));
         }
       } else {
-        setError("Failed to load collection details.");
+        setError("learnFailedToLoadCollectionDetails");
       }
     } finally {
       setIsLoading(false);
@@ -120,7 +126,7 @@ export default function CollectionDetailPage() {
       const res = await vocabularyApi.list({ page: 0, size: 100 });
       setLibraryWords(res.content);
     } catch {
-      setAddWordsError("Failed to fetch vocabulary library.");
+      setAddWordsError("learnFailedToFetchVocabularyLibrary");
     } finally {
       setIsLoadingLibrary(false);
     }
@@ -149,9 +155,9 @@ export default function CollectionDetailPage() {
       await fetchCollectionData();
     } catch (err) {
       if (err instanceof ApiError) {
-        setAddWordsError(err.message);
+        setAddWordsError(learningErrorKey(err));
       } else {
-        setAddWordsError("Failed to add words to collection.");
+        setAddWordsError("learnFailedToAddWordsToCollection");
       }
     } finally {
       setIsAssigning(false);
@@ -170,7 +176,7 @@ export default function CollectionDetailPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTitle.trim()) {
-      setEditError("Title is required.");
+      setEditError("learnTitleIsRequired");
       return;
     }
 
@@ -186,12 +192,12 @@ export default function CollectionDetailPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TITLE_ALREADY_EXISTS") {
-          setEditError("A collection with this title already exists.");
+          setEditError("learnACollectionWithThisTitleAlreadyExists");
         } else {
-          setEditError(err.message);
+          setEditError(learningErrorKey(err));
         }
       } else {
-        setEditError("Failed to update collection.");
+        setEditError("learnFailedToUpdateCollection");
       }
     } finally {
       setIsUpdating(false);
@@ -208,7 +214,7 @@ export default function CollectionDetailPage() {
       setWordToRemove(null);
       await fetchCollectionData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to remove word.");
+      setError(learningErrorKey(err, "learnFailedToRemoveWord"));
     } finally {
       setIsRemovingWord(false);
     }
@@ -223,9 +229,9 @@ export default function CollectionDetailPage() {
       router.push("/collections");
     } catch (err) {
       if (err instanceof ApiError) {
-        setDeleteError(err.message);
+        setDeleteError(learningErrorKey(err));
       } else {
-        setDeleteError("Failed to delete collection.");
+        setDeleteError("learnFailedToDeleteCollection");
       }
       setIsDeleting(false);
     }
@@ -250,16 +256,14 @@ export default function CollectionDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="learning-module space-y-6">
       {/* Back Navigation Bar */}
       <div>
         <Link
           href="/collections"
           className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to Collections
-        </Link>
+          <ArrowLeft className="h-4 w-4 mr-1.5" />{t("learnBackToCollections")}</Link>
       </div>
 
       {/* Loading State */}
@@ -275,10 +279,8 @@ export default function CollectionDetailPage() {
       {!isLoading && error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center space-y-3">
           <AlertCircle className="h-6 w-6 text-destructive mx-auto" />
-          <p className="text-sm font-medium text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchCollectionData}>
-            Retry
-          </Button>
+          <p className="text-sm font-medium text-destructive">{t(error)}</p>
+          <Button variant="outline" size="sm" onClick={fetchCollectionData}>{t("learnRetry")}</Button>
         </div>
       )}
 
@@ -294,16 +296,15 @@ export default function CollectionDetailPage() {
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
                   <Layers className="h-3 w-3 mr-1" />
-                  {collection.wordCount === 1 ? "1 word" : `${collection.wordCount} words`}
+                  {t("learnWordCount", { count: collection.wordCount })}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-                {collection.description || "No description provided for this collection."}
+                {collection.description || t("learnNoDescriptionProvidedForThisCollection")}
               </p>
               <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Created: {new Date(collection.createdAt).toLocaleDateString()}
+                  <Calendar className="h-3 w-3" />{t("learnCreated")}{" "}{new Date(collection.createdAt).toLocaleDateString(locale)}
                 </span>
               </div>
             </div>
@@ -315,27 +316,23 @@ export default function CollectionDetailPage() {
                 id="add-words-to-collection-btn"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Words</span>
+                <span>{t("learnAddWords")}</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleOpenEdit}
-                title="Edit Collection"
+                title={t("learnEditCollection")}
               >
-                <Edit2 className="h-3.5 w-3.5 mr-1" />
-                Edit
-              </Button>
+                <Edit2 className="h-3.5 w-3.5 mr-1" />{t("learnEdit")}</Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setIsDeleteOpen(true)}
-                title="Delete Collection"
+                title={t("learnDeleteCollection")}
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Delete Deck
-              </Button>
+                <Trash2 className="h-3.5 w-3.5 mr-1" />{t("learnDeleteDeck")}</Button>
             </div>
           </div>
 
@@ -346,7 +343,7 @@ export default function CollectionDetailPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search words in this collection..."
+                aria-label={t("learnSearchWordsInThisCollection")} placeholder={t("learnSearchWordsInThisCollection")}
                 className="pl-9 bg-background max-w-md"
               />
             </div>
@@ -359,17 +356,11 @@ export default function CollectionDetailPage() {
                 <BookOpen className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-foreground">
-                  This collection is empty
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                  Add words from your existing Vocabulary Library to organize them into this thematic deck.
-                </p>
+                <h3 className="text-base font-semibold text-foreground">{t("learnThisCollectionIsEmpty")}</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{t("learnAddWordsFromYourExistingVocabularyLibraryToOrganizeThemIntoThisThematicDeck")}</p>
               </div>
               <Button onClick={handleOpenAddWords} className="mt-2">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add words to collection
-              </Button>
+                <Plus className="h-4 w-4 mr-1.5" />{t("learnAddWordsToCollection")}</Button>
             </div>
           )}
 
@@ -404,8 +395,7 @@ export default function CollectionDetailPage() {
                           </span>
                         )}
                         {item.srsStatus && (
-                          <span className="text-xs px-1.5 py-0.2 rounded bg-muted/60 text-muted-foreground">
-                            SRS: {item.srsStatus.state}
+                          <span className="text-xs px-1.5 py-0.2 rounded bg-muted/60 text-muted-foreground">{t("learnSRS")}{" "}{item.srsStatus.state}
                           </span>
                         )}
                       </div>
@@ -427,10 +417,10 @@ export default function CollectionDetailPage() {
                         size="sm"
                         className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
                         onClick={() => setWordToRemove(item)}
-                        title="Remove from Collection"
+                        title={t("learnRemoveFromCollection")}
                       >
                         <X className="h-3.5 w-3.5" />
-                        <span>Remove</span>
+                        <span>{t("learnRemove")}</span>
                       </Button>
                     </div>
                   </div>
@@ -440,8 +430,7 @@ export default function CollectionDetailPage() {
           )}
 
           {filteredWords.length === 0 && vocabData && vocabData.content.length > 0 && (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No words in this collection match &quot;{search}&quot;.
+            <div className="p-8 text-center text-sm text-muted-foreground">{t("learnNoWordsInThisCollectionMatch")}{search}&quot;.
             </div>
           )}
         </div>
@@ -449,19 +438,19 @@ export default function CollectionDetailPage() {
 
       {/* ADD WORDS DIALOG */}
       <Dialog open={isAddWordsOpen} onOpenChange={setIsAddWordsOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="learning-module sm:max-w-lg">
           <div className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Add Words to Deck</DialogTitle>
-              <DialogDescription>
-                Select words from your Vocabulary Library to assign to{" "}
+            <LanguageSwitcher />
+              <DialogTitle>{t("learnAddWordsToDeck")}</DialogTitle>
+              <DialogDescription>{t("learnSelectWordsFromYourVocabularyLibraryToAssignTo")}{" "}
                 <span className="font-semibold text-foreground">&quot;{collection?.title}&quot;</span>.
               </DialogDescription>
             </DialogHeader>
 
             {addWordsError && (
               <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {addWordsError}
+                {t(addWordsError)}
               </div>
             )}
 
@@ -470,7 +459,7 @@ export default function CollectionDetailPage() {
               <Input
                 value={librarySearch}
                 onChange={(e) => setLibrarySearch(e.target.value)}
-                placeholder="Filter library words..."
+                placeholder={t("learnFilterLibraryWords")}
                 className="pl-8 text-xs h-9"
               />
             </div>
@@ -479,14 +468,12 @@ export default function CollectionDetailPage() {
             <div className="max-h-60 overflow-y-auto border border-border rounded-md divide-y divide-border">
               {isLoadingLibrary ? (
                 <div className="p-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading library...
-                </div>
+                  <Loader2 className="h-4 w-4 animate-spin" />{t("learnLoadingLibrary")}</div>
               ) : availableWordsToAdd.length === 0 ? (
                 <div className="p-6 text-center text-xs text-muted-foreground">
                   {librarySearch
-                    ? "No matching vocabulary found."
-                    : "All words in your library are already in this collection, or your library is empty."}
+                    ? t("learnNoMatchingVocabularyFound")
+                    : t("learnAllWordsInYourLibraryAreAlreadyInThisCollectionOrYourLibraryIsEmpty")}
                 </div>
               ) : (
                 availableWordsToAdd.map((word) => {
@@ -494,6 +481,8 @@ export default function CollectionDetailPage() {
                   return (
                     <div
                       key={word.id}
+                      role="checkbox" tabIndex={0} aria-checked={isSelected}
+                      onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); toggleSelectWord(word.id); } }}
                       onClick={() => toggleSelectWord(word.id)}
                       className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
                         isSelected ? "bg-muted" : "hover:bg-muted/50"
@@ -530,9 +519,7 @@ export default function CollectionDetailPage() {
                 size="sm"
                 onClick={() => setIsAddWordsOpen(false)}
                 disabled={isAssigning}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button
                 size="sm"
                 onClick={handleAssignWordsSubmit}
@@ -541,11 +528,9 @@ export default function CollectionDetailPage() {
               >
                 {isAssigning ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Adding...
-                  </>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("learnAdding")}</>
                 ) : (
-                  `Add ${selectedWordIds.size} Word${selectedWordIds.size === 1 ? "" : "s"}`
+                  t("learnAddWordCount", { count: selectedWordIds.size })
                 )}
               </Button>
             </DialogFooter>
@@ -555,23 +540,18 @@ export default function CollectionDetailPage() {
 
       {/* REMOVE WORD CONFIRMATION (NON-DESTRUCTIVE) */}
       <Dialog open={!!wordToRemove} onOpenChange={(open) => !open && setWordToRemove(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="learning-module sm:max-w-md">
           <div className="space-y-4">
             <DialogHeader>
+            <LanguageSwitcher />
               <DialogTitle className="flex items-center gap-2">
-                <RotateCcw className="h-5 w-5 text-muted-foreground" />
-                Remove from Collection
-              </DialogTitle>
-              <DialogDescription>
-                Remove <span className="font-semibold text-foreground">&quot;{wordToRemove?.term}&quot;</span> from this collection?
-              </DialogDescription>
+                <RotateCcw className="h-5 w-5 text-muted-foreground" />{t("learnRemoveFromCollection")}</DialogTitle>
+              <DialogDescription>{t("learnRemove")}{" "}<span className="font-semibold text-foreground">&quot;{wordToRemove?.term}&quot;</span>{" "}{t("learnFromThisCollection")}</DialogDescription>
             </DialogHeader>
 
             <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Non-destructive Semantics:</p>
-              <p className="mt-1">
-                This action only removes the word from this deck. The word will remain fully available in your main Vocabulary Library, and its SRS review progress will not be deleted or modified.
-              </p>
+              <p className="font-medium text-foreground">{t("learnNonDestructiveSemantics")}</p>
+              <p className="mt-1">{t("learnThisActionOnlyRemovesTheWordFromThisDeckTheWordWillRemainFullyAvailableInYourMainVocabul")}</p>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
@@ -580,9 +560,7 @@ export default function CollectionDetailPage() {
                 size="sm"
                 onClick={() => setWordToRemove(null)}
                 disabled={isRemovingWord}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -592,11 +570,9 @@ export default function CollectionDetailPage() {
               >
                 {isRemovingWord ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Removing...
-                  </>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("learnRemoving")}</>
                 ) : (
-                  "Remove from Deck"
+                  t("learnRemoveFromDeck")
                 )}
               </Button>
             </DialogFooter>
@@ -606,22 +582,23 @@ export default function CollectionDetailPage() {
 
       {/* EDIT COLLECTION DIALOG */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleEditSubmit} className="space-y-4">
+        <DialogContent className="learning-module sm:max-w-md">
+          <form noValidate onSubmit={handleEditSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Edit Collection</DialogTitle>
-              <DialogDescription>Update collection title and description.</DialogDescription>
+            <LanguageSwitcher />
+              <DialogTitle>{t("learnEditCollection")}</DialogTitle>
+              <DialogDescription>{t("learnUpdateCollectionTitleAndDescription")}</DialogDescription>
             </DialogHeader>
 
             {editError && (
-              <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {editError}
+              <div role="alert" id="edit-title-error" className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+                {t(editError)}
               </div>
             )}
 
             <div className="space-y-3 py-1">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-col-title">Collection Title *</Label>
+                <Label htmlFor="edit-col-title">{t("learnCollectionTitle")}</Label>
                 <Input
                   id="edit-col-title"
                   value={editTitle}
@@ -632,7 +609,7 @@ export default function CollectionDetailPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-col-description">Description</Label>
+                <Label htmlFor="edit-col-description">{t("learnDescription")}</Label>
                 <Textarea
                   id="edit-col-description"
                   value={editDescription}
@@ -649,11 +626,9 @@ export default function CollectionDetailPage() {
                 size="sm"
                 onClick={() => setIsEditOpen(false)}
                 disabled={isUpdating}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button type="submit" size="sm" disabled={isUpdating}>
-                {isUpdating ? "Saving..." : "Save Changes"}
+                {isUpdating ? t("learnSaving") : t("learnSaveChanges")}
               </Button>
             </DialogFooter>
           </form>
@@ -662,28 +637,24 @@ export default function CollectionDetailPage() {
 
       {/* DELETE COLLECTION DIALOG */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="learning-module sm:max-w-md">
           <div className="space-y-4">
             <DialogHeader>
+            <LanguageSwitcher />
               <DialogTitle className="text-destructive flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Delete Collection
-              </DialogTitle>
-              <DialogDescription>
-                Delete <span className="font-semibold text-foreground">&quot;{collection?.title}&quot;</span>?
+                <AlertCircle className="h-5 w-5" />{t("learnDeleteCollection")}</DialogTitle>
+              <DialogDescription>{t("learnDelete")}{" "}<span className="font-semibold text-foreground">&quot;{collection?.title}&quot;</span>?
               </DialogDescription>
             </DialogHeader>
 
             <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Non-destructive Deletion Guarantee:</p>
-              <p className="mt-1">
-                Deleting this collection will NOT delete your vocabulary. All words in this deck will remain available in your Vocabulary Library with their SRS cards intact.
-              </p>
+              <p className="font-medium text-foreground">{t("learnNonDestructiveDeletionGuarantee")}</p>
+              <p className="mt-1">{t("learnDeletingThisCollectionWillNOTDeleteYourVocabularyAllWordsInThisDeckWillRemainAvailableIn")}</p>
             </div>
 
             {deleteError && (
               <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {deleteError}
+                {t(deleteError)}
               </div>
             )}
 
@@ -693,9 +664,7 @@ export default function CollectionDetailPage() {
                 size="sm"
                 onClick={() => setIsDeleteOpen(false)}
                 disabled={isDeleting}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -703,7 +672,7 @@ export default function CollectionDetailPage() {
                 disabled={isDeleting}
                 id="confirm-delete-deck-btn"
               >
-                {isDeleting ? "Deleting..." : "Delete Collection"}
+                {isDeleting ? t("learnDeleting") : t("learnDeleteCollection")}
               </Button>
             </DialogFooter>
           </div>

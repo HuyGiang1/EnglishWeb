@@ -121,6 +121,17 @@ The dashboard serves as the central command center for language acquisition. It 
 
 ## 4. Learning Experience & Interaction Design
 
+### M3-EVO-1C-2 implementation note
+
+Learning-module chrome supports vi-VN/en; original learning material remains
+unchanged. Quick Add places Word/Phrase and Meaning first, with optional details
+inside a native disclosure that retains values. Use Study sets / Bộ từ and
+Chưa nhớ / Khó / Nhớ / Rất dễ consistently. Existing module headers offer language
+switching without leaving a session. Quiz confirmation uses the shared Dialog;
+lesson/membership selection exposes keyboard actions. Feedback uses words/icons,
+neutral tones and safe localized errors, with wrapping controls for narrow widths.
+These changes do not alter grading, scheduling, parser limits or media policy.
+
 ### 4.1 Frictionless Vocabulary Entry with Keyboard Safety
 * **Input-Guarded Hotkey `C`**: Opens the Quick Add dialog from any screen within the Workspace Shell, **active only when focus is outside any form input, textarea, or editable element**.
 * **Fast Field Traversal**: Form order: `Term` $\rightarrow$ `Part of Speech` $\rightarrow$ `Definition` $\rightarrow$ `Example Sentence` $\rightarrow$ `Collection`.

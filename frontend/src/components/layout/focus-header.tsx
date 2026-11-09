@@ -1,5 +1,6 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -11,6 +12,6 @@ export function FocusHeader() {
     <Link href="/dashboard" className={buttonVariants({ variant: "ghost", size: "sm" })}>
       <ArrowLeft className="size-4" aria-hidden="true" />{t("exitWorkspace")}
     </Link>
-    <span className="text-xs text-muted-foreground">{t("focusMode")}</span>
+    <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted-foreground">{t("focusMode")}</span><LanguageSwitcher /></div>
   </header>;
 }

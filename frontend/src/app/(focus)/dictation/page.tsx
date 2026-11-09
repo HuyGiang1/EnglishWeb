@@ -1,5 +1,9 @@
 "use client";
 
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -32,9 +36,10 @@ interface CompletedRecord {
 }
 
 export default function DictationPage() {
+  const { t } = useLocale();
   const [exercises, setExercises] = useState<DictationExerciseSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TranslationKey | null>(null);
 
   // Active Exercise State
   const [activeExercise, setActiveExercise] = useState<DictationExerciseDetail | null>(null);
@@ -46,7 +51,7 @@ export default function DictationPage() {
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
-  const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<TranslationKey | null>(null);
 
   // Input & Evaluation State
   const [transcript, setTranscript] = useState<string>("");
@@ -67,7 +72,7 @@ export default function DictationPage() {
       const data = await dictationApi.listExercises();
       setExercises(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load dictation exercises";
+      const msg = learningErrorKey(err, "learnFailedToLoadDictationExercises");
       setError(msg);
     } finally {
       setLoading(false);
@@ -99,7 +104,7 @@ export default function DictationPage() {
       setActiveExercise(detail);
       setActiveExerciseIndex(index);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load exercise details";
+      const msg = learningErrorKey(err, "learnFailedToLoadExerciseDetails");
       setAudioError(msg);
     }
   }, []);
@@ -114,7 +119,7 @@ export default function DictationPage() {
       audioRef.current.play().then(() => {
         setIsPlaying(true);
       }).catch(() => {
-        setAudioError("Unable to play audio. Click replay to retry.");
+        setAudioError("learnUnableToPlayAudioClickReplayToRetry");
         setIsPlaying(false);
       });
     }
@@ -159,6 +164,7 @@ export default function DictationPage() {
       }
 
       // Speed shortcuts: [ slows down, ] speeds up
+      if ((e.target as HTMLElement | null)?.matches("input, textarea, select, [contenteditable=true]")) return;
       if (e.key === "[") {
         e.preventDefault();
         changeSpeed(0.75);
@@ -200,8 +206,8 @@ export default function DictationPage() {
         },
       ]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to evaluate transcription";
-      alert(msg);
+      const msg = learningErrorKey(err, "learnFailedToEvaluateTranscription");
+      setAudioError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -251,30 +257,26 @@ export default function DictationPage() {
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Dictation Session Complete
-            </h1>
-            <p className="text-xs text-muted-foreground font-mono">
-              Verified listening actions recorded to your daily learning streak
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnDictationSessionComplete")}</h1>
+            <p className="text-xs text-muted-foreground font-mono">{t("learnVerifiedListeningActionsRecordedToYourDailyLearningStreak")}</p>
           </div>
 
           {/* KPI Summary */}
           <div className="grid grid-cols-3 gap-3 border-y border-border py-4">
             <div>
-              <div className="text-xs text-muted-foreground font-mono">Completed</div>
+              <div className="text-xs text-muted-foreground font-mono">{t("learnCompleted")}</div>
               <div className="text-xl font-bold font-mono text-foreground mt-0.5" data-testid="completed-count">
                 {totalCount}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground font-mono">Avg Accuracy</div>
+              <div className="text-xs text-muted-foreground font-mono">{t("learnAvgAccuracy")}</div>
               <div className="text-xl font-bold font-mono text-foreground mt-0.5" data-testid="avg-accuracy">
                 {avgAccuracy}%
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground font-mono">Passed (≥80%)</div>
+              <div className="text-xs text-muted-foreground font-mono">{t("learnPassed80")}</div>
               <div className="text-xl font-bold font-mono text-foreground mt-0.5">
                 {passedCount}/{totalCount}
               </div>
@@ -315,12 +317,10 @@ export default function DictationPage() {
                 handleExitToDirectory();
               }}
               data-testid="return-directory-btn"
-            >
-              Choose More Exercises
-            </Button>
+            >{t("learnChooseMoreExercises")}</Button>
             <Link href="/dashboard" className="flex-1">
               <Button className="w-full text-xs gap-1.5" data-testid="exit-dashboard-btn">
-                <span>View Dashboard</span>
+                <span>{t("learnViewDashboard")}</span>
                 <ArrowRight className="size-3.5" />
               </Button>
             </Link>
@@ -341,18 +341,14 @@ export default function DictationPage() {
           <div>
             <div className="flex items-center gap-2">
               <Headphones className="size-5 text-foreground" />
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Daily Dictation
-              </h1>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">{t("learnDailyDictation")}</h1>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Verbatim audio transcription · Real-time difference analysis · Pure focus
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{t("learnVerbatimAudioTranscriptionRealTimeDifferenceAnalysisPureFocus")}</p>
           </div>
           <Link href="/dashboard">
             <Button variant="outline" size="sm" className="text-xs gap-1.5 h-8">
               <ArrowLeft className="size-3.5" />
-              <span>Exit to Dashboard</span>
+              <span>{t("learnExitToDashboard")}</span>
             </Button>
           </Link>
         </div>
@@ -361,26 +357,25 @@ export default function DictationPage() {
         {loading && (
           <div className="py-12 text-center text-xs text-muted-foreground font-mono space-y-2">
             <div className="animate-spin size-5 border-2 border-foreground border-t-transparent rounded-full mx-auto" />
-            <p>Loading available listening exercises...</p>
+            <p>{t("learnLoadingAvailableListeningExercises")}</p>
           </div>
         )}
 
         {/* Error state */}
         {error && (
           <div className="p-4 border border-border bg-muted/20 rounded-md text-xs text-destructive flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={loadExercises} className="text-xs h-7">
-              Retry
-            </Button>
+            <span>{t(error)}</span>
+            <Button variant="outline" size="sm" onClick={loadExercises} className="text-xs h-7">{t("learnRetry")}</Button>
           </div>
         )}
 
         {/* Exercises list */}
+        {!loading && !error && exercises.length === 0 && <p role="status">{t("learnNoListeningExercises")}</p>}
         {!loading && !error && (
           <div className="space-y-3" data-testid="exercise-list">
             <div className="text-xs font-mono text-muted-foreground flex items-center justify-between px-1">
-              <span>{exercises.length} Exercises Available</span>
-              <span>Select to begin practice</span>
+              <span>{exercises.length}{" "}{t("learnExercisesAvailable")}</span>
+              <span>{t("learnSelectToBeginPractice")}</span>
             </div>
 
             {exercises.map((ex, idx) => (
@@ -406,7 +401,7 @@ export default function DictationPage() {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                     <span>{ex.topicTag}</span>
                     <span>·</span>
-                    <span>{ex.audioDurationSeconds ? `${ex.audioDurationSeconds}s` : "Audio"}</span>
+                    <span>{ex.audioDurationSeconds ? `${ex.audioDurationSeconds}s` : t("learnAudio")}</span>
                   </div>
                 </div>
 
@@ -417,20 +412,16 @@ export default function DictationPage() {
                         <CheckCircle2 className="size-3" />
                         <span>{ex.lastAccuracyScore}%</span>
                       </div>
-                      <div className="text-[10px] font-mono text-muted-foreground">Completed</div>
+                      <div className="text-[10px] font-mono text-muted-foreground">{t("learnCompleted")}</div>
                     </div>
                   ) : (
-                    <Badge variant="secondary" className="text-[10px] font-mono py-0.5 px-2">
-                      New
-                    </Badge>
+                    <Badge variant="secondary" className="text-[10px] font-mono py-0.5 px-2">{t("learnNew")}</Badge>
                   )}
                   {ex.isAudioAvailable === false ? (
-                    <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground border-dashed">
-                      Audio Missing
-                    </Badge>
+                    <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground border-dashed">{t("learnAudioMissing")}</Badge>
                   ) : (
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
-                      <span>Start</span>
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" aria-label={`${t("learnStart")}: ${ex.title}`} onClick={(event) => { event.stopPropagation(); selectExercise(ex.contentId, idx); }}>
+                      <span>{t("learnStart")}</span>
                       <ArrowRight className="size-3" />
                     </Button>
                   )}
@@ -464,7 +455,7 @@ export default function DictationPage() {
           }
         }}
         onEnded={() => setIsPlaying(false)}
-        onError={() => setAudioError("Audio playback encountered an error.")}
+        onError={() => setAudioError("learnAudioPlaybackEncounteredAnError")}
       />
 
       {/* Session Top Bar */}
@@ -477,7 +468,7 @@ export default function DictationPage() {
           data-testid="exit-to-directory-btn"
         >
           <ArrowLeft className="size-3.5" />
-          <span>All Exercises</span>
+          <span>{t("learnAllExercises")}</span>
         </Button>
 
         <div className="flex items-center gap-2">
@@ -485,7 +476,7 @@ export default function DictationPage() {
             {activeExercise.cefrLevel}
           </Badge>
           <span className="text-xs font-mono text-muted-foreground">
-            {activeExerciseIndex + 1} of {exercises.length}
+            {activeExerciseIndex + 1}{" "}{t("learnOf")}{" "}{exercises.length}
           </span>
         </div>
 
@@ -514,23 +505,19 @@ export default function DictationPage() {
         <h2 className="text-lg font-bold text-foreground" data-testid="exercise-title">
           {activeExercise.title}
         </h2>
-        <p className="text-xs text-muted-foreground font-mono">
-          Topic: {activeExercise.topicTag} · Listen carefully and transcribe verbatim
-        </p>
+        <p className="text-xs text-muted-foreground font-mono">{t("learnTopic")}{" "}{activeExercise.topicTag}{" "}{t("learnListenCarefullyAndTranscribeVerbatim")}</p>
       </div>
 
       {/* Audio Player Card */}
       <Card className="border-border bg-card p-6 space-y-4 text-center" data-testid="audio-player-card">
         {audioError ? (
           <div className="text-xs text-destructive py-2">
-            <span>{audioError}</span>
+            <span>{t(audioError)}</span>
           </div>
         ) : null}
 
         {activeExercise.isAudioAvailable === false ? (
-          <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded border border-border" data-testid="audio-missing-banner">
-            Audio recording is not installed on this instance. Run <code className="text-foreground">scripts/setup-dev-audio.sh</code> to provision local audio.
-          </div>
+          <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded border border-border" data-testid="audio-missing-banner">{t("learnAudioRecordingIsNotInstalledOnThisInstanceRun")}{" "}{" "}</div>
         ) : null}
 
         <div className="flex items-center justify-center gap-4">
@@ -540,7 +527,7 @@ export default function DictationPage() {
             size="icon"
             className="size-9 rounded-full"
             onClick={replayAudio}
-            title="Replay from start (Mod+R)"
+            title={t("learnReplayFromStartModR")}
             data-testid="replay-audio-btn"
           >
             <RotateCcw className="size-4" />
@@ -551,7 +538,7 @@ export default function DictationPage() {
             className="size-14 rounded-full shadow-none"
             onClick={togglePlay}
             data-testid="play-pause-btn"
-            title="Play / Pause (Mod+Space)"
+            title={t("learnPlayPauseModSpace")}
           >
             {isPlaying ? <Pause className="size-6" /> : <Play className="size-6 ml-0.5" />}
           </Button>
@@ -580,18 +567,14 @@ export default function DictationPage() {
           </div>
         </div>
 
-        <div className="text-[11px] font-mono text-muted-foreground">
-          Mod+Space: Play/Pause · Mod+R: Replay · [: 0.75x · ]: 1.25x
-        </div>
+        <div className="text-[11px] font-mono text-muted-foreground">{t("learnModSpacePlayPauseModRReplay075x125x")}</div>
       </Card>
 
       {/* Transcription Input Card (Before Submission) */}
       {!evalResult ? (
-        <form onSubmit={handleSubmit} className="space-y-4" data-testid="transcription-form">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4" data-testid="transcription-form">
           <div className="space-y-1.5">
-            <label htmlFor="transcript-input" className="text-xs font-semibold text-foreground">
-              Your Transcription
-            </label>
+            <label htmlFor="transcript-input" className="text-xs font-semibold text-foreground">{t("learnYourTranscription")}</label>
             <textarea
               id="transcript-input"
               rows={4}
@@ -603,7 +586,7 @@ export default function DictationPage() {
                   handleSubmit();
                 }
               }}
-              placeholder="Type the sentence you hear... (Mod+Enter to submit)"
+              placeholder={t("learnTypeTheSentenceYouHearModEnterToSubmit")}
               className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-foreground transition-shadow placeholder:text-muted-foreground"
               autoFocus
               data-testid="transcript-input"
@@ -619,11 +602,11 @@ export default function DictationPage() {
             {submitting ? (
               <>
                 <div className="animate-spin size-3.5 border-2 border-background border-t-transparent rounded-full" />
-                <span>Evaluating Transcription...</span>
+                <span>{t("learnEvaluatingTranscription")}</span>
               </>
             ) : (
               <>
-                <span>Check Answer (Mod+Enter)</span>
+                <span>{t("learnCheckAnswerModEnter")}</span>
                 <ArrowRight className="size-3.5" />
               </>
             )}
@@ -643,11 +626,11 @@ export default function DictationPage() {
                   className="text-xs font-mono"
                   data-testid="pass-fail-badge"
                 >
-                  {evalResult.isPassed ? "Pass (≥80%)" : "Needs Work (<80%)"}
+                  {evalResult.isPassed ? t("learnPass80") : t("learnNeedsWork80")}
                 </Badge>
               </div>
               <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                {evalResult.wordCount} words · {evalResult.errorCount} error{evalResult.errorCount === 1 ? "" : "s"}
+                {evalResult.wordCount}{" "}{t("learnWords3")}{" "}{evalResult.errorCount}{" "}{t("learnError2")}{evalResult.errorCount === 1 ? "" : "s"}
               </p>
             </div>
 
@@ -659,15 +642,15 @@ export default function DictationPage() {
               data-testid="try-again-btn"
             >
               <RotateCcw className="size-3.5" />
-              <span>Try Again</span>
+              <span>{t("learnTryAgain")}</span>
             </Button>
           </div>
 
           {/* Word-Level Diff View */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-              <span>Word Comparison</span>
-              <span>Black: Correct · Strikethrough: Missed · Underline: Extra</span>
+              <span>{t("learnWordComparison")}</span>
+              <span>{t("learnBlackCorrectStrikethroughMissedUnderlineExtra")}</span>
             </div>
 
             <div
@@ -687,7 +670,7 @@ export default function DictationPage() {
                     <span
                       key={idx}
                       className="text-muted-foreground line-through bg-muted/60 px-1 py-0.5 rounded font-mono mr-1.5"
-                      title={`Omitted word: ${tok.expectedWord}`}
+                      title={t("learnOmittedWord", { word: tok.expectedWord ?? "" })}
                       data-testid="diff-missing"
                     >
                       {tok.expectedWord}
@@ -699,7 +682,7 @@ export default function DictationPage() {
                     <span
                       key={idx}
                       className="text-foreground underline bg-muted/30 px-1 py-0.5 rounded mr-1.5"
-                      title="Extra inserted word"
+                      title={t("learnExtraInsertedWord")}
                       data-testid="diff-extra"
                     >
                       {tok.text}
@@ -725,7 +708,7 @@ export default function DictationPage() {
 
           {/* Revealed Reference Transcript */}
           <div className="space-y-1.5 border-t border-border pt-4">
-            <div className="text-[11px] font-mono text-muted-foreground">Canonical Reference:</div>
+            <div className="text-[11px] font-mono text-muted-foreground">{t("learnCanonicalReference")}</div>
             <p className="text-sm font-medium text-foreground italic" data-testid="canonical-reference">
               &ldquo;{evalResult.canonicalTranscript}&rdquo;
             </p>
@@ -738,7 +721,7 @@ export default function DictationPage() {
               onClick={handleNextExercise}
               data-testid="next-exercise-btn"
             >
-              <span>Next Exercise</span>
+              <span>{t("learnNextExercise")}</span>
               <ArrowRight className="size-3.5" />
             </Button>
           </div>

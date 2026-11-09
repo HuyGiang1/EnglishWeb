@@ -14,3 +14,7 @@ export const cookies = async () => ({ get: (name) => {
 } });
 export const Inter = () => ({ variable: "test-inter" });
 export const JetBrains_Mono = () => ({ variable: "test-mono" });
+
+let params = { id: "fixture-id" };
+export const setParams = (value) => { params = value; };
+export const useParams = () => params;

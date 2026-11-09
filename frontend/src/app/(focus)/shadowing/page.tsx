@@ -1,5 +1,9 @@
 "use client";
 
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -27,33 +31,33 @@ import {
   SelfRating,
 } from "@/lib/api/shadowing";
 import { settingsApi } from "@/lib/api/settings";
-import { ApiError } from "@/lib/api/client";
 
 type PageMode = "DIRECTORY" | "PRACTICE";
 type PracticeState = "IDLE" | "RECORDING" | "RECORDED" | "SUBMITTING" | "COMPLETED";
 
-const RATING_OPTIONS: { id: SelfRating; label: string; desc: string }[] = [
-  { id: "NEEDS_WORK", label: "Needs Work", desc: "Hesitant pace or unclear pronunciation" },
-  { id: "ACCEPTABLE", label: "Acceptable", desc: "Understandable with minor rhythm gaps" },
-  { id: "GOOD", label: "Good", desc: "Clear rhythm, cadence, and intelligible flow" },
-  { id: "FLUENT", label: "Fluent", desc: "Natural pacing, confident intonation, seamless" },
+const RATING_OPTIONS: { id: SelfRating; label: TranslationKey; desc: TranslationKey }[] = [
+  { id: "NEEDS_WORK", label: "learnNeedsWork", desc: "learnHesitantPaceOrUnclearPronunciation" },
+  { id: "ACCEPTABLE", label: "learnAcceptable", desc: "learnUnderstandableWithMinorRhythmGaps" },
+  { id: "GOOD", label: "learnSelfGood", desc: "learnClearRhythmCadenceAndIntelligibleFlow" },
+  { id: "FLUENT", label: "learnFluent", desc: "learnNaturalPacingConfidentIntonationSeamless" },
 ];
 
 export default function ShadowingPage() {
+  const { t, locale } = useLocale();
   // Navigation & list state
   const [mode, setMode] = useState<PageMode>("DIRECTORY");
   const [exercises, setExercises] = useState<ShadowingExerciseSummary[]>([]);
   const [activeExercise, setActiveExercise] = useState<ShadowingExerciseDetail | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
+  const [listError, setListError] = useState<TranslationKey | null>(null);
 
   // Practice session state
   const [practiceState, setPracticeState] = useState<PracticeState>("IDLE");
   const [attemptId, setAttemptId] = useState<string>("");
   const [selfRating, setSelfRating] = useState<SelfRating | null>(null);
   const [completionResult, setCompletionResult] = useState<ShadowingCompleteResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<TranslationKey | null>(null);
 
   // Native Reference Audio Player state
   const referenceAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -84,7 +88,7 @@ export default function ShadowingPage() {
       const data = await shadowingApi.listExercises();
       setExercises(data);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to load shadowing exercises.";
+      const msg = learningErrorKey(err, "learnFailedToLoadShadowingExercises");
       setListError(msg);
     } finally {
       setIsLoadingList(false);
@@ -146,7 +150,7 @@ export default function ShadowingPage() {
 
       setMode("PRACTICE");
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to load exercise details.";
+      const msg = learningErrorKey(err, "learnFailedToLoadExerciseDetails2");
       setErrorMessage(msg);
     } finally {
       setIsLoadingDetail(false);
@@ -162,7 +166,7 @@ export default function ShadowingPage() {
     } else {
       referenceAudioRef.current.playbackRate = playbackSpeed;
       referenceAudioRef.current.play().catch(() => {
-        setErrorMessage("Unable to play reference audio. Please check audio setup.");
+        setErrorMessage("learnUnableToPlayReferenceAudioPleaseCheckAudioSetup");
       });
       setIsReferencePlaying(true);
     }
@@ -194,7 +198,7 @@ export default function ShadowingPage() {
   // Start Recording
   const startRecording = async () => {
     if (!mediaRecorderSupported) {
-      setErrorMessage("Voice recording is not supported in this browser.");
+      setErrorMessage("learnVoiceRecordingIsNotSupportedInThisBrowser");
       return;
     }
 
@@ -234,7 +238,7 @@ export default function ShadowingPage() {
       recorder.onerror = () => {
         stopMicrophoneTracks();
         if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-        setErrorMessage("An error occurred during audio recording. Please check your microphone.");
+        setErrorMessage("learnAnErrorOccurredDuringAudioRecordingPleaseCheckYourMicrophone");
         setPracticeState("IDLE");
       };
 
@@ -251,7 +255,7 @@ export default function ShadowingPage() {
           setUserAudioUrl(url);
           setPracticeState("RECORDED");
         } else {
-          setErrorMessage("No audio data was recorded. Please check your microphone.");
+          setErrorMessage("learnNoAudioDataWasRecordedPleaseCheckYourMicrophone");
           setPracticeState("IDLE");
         }
       };
@@ -276,7 +280,7 @@ export default function ShadowingPage() {
       if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
         setMicPermissionDenied(true);
       } else {
-        setErrorMessage("Microphone access failed. Please ensure a microphone is connected.");
+        setErrorMessage("learnMicrophoneAccessFailedPleaseEnsureAMicrophoneIsConnected");
       }
       setPracticeState("IDLE");
     }
@@ -371,7 +375,7 @@ export default function ShadowingPage() {
       // Refresh exercise list metadata in background
       loadExercises();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to record practice completion.";
+      const msg = learningErrorKey(err, "learnFailedToRecordPracticeCompletion");
       setErrorMessage(msg);
       setPracticeState("RECORDED");
     }
@@ -435,7 +439,7 @@ export default function ShadowingPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.tagName === "BUTTON" || target.isContentEditable) {
         return;
       }
 
@@ -486,17 +490,13 @@ export default function ShadowingPage() {
             href="/dashboard"
             onClick={handleExitPractice}
             className="text-sm font-medium text-[#737373] hover:text-[#111111] transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] rounded px-1"
-          >
-            ← Exit
-          </Link>
+          >{t("learnExit")}</Link>
           <span className="text-[#E5E5E5]">|</span>
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-[#111111]" />
-            <h1 className="text-base font-semibold tracking-tight text-[#111111]">Speech Shadowing</h1>
+            <h1 className="text-base font-semibold tracking-tight text-[#111111]">{t("learnSpeechShadowing")}</h1>
           </div>
-          <Badge variant="outline" className="text-xs uppercase tracking-wider font-mono ml-1 border-[#E5E5E5]">
-            Focus Mode
-          </Badge>
+          <Badge variant="outline" className="text-xs uppercase tracking-wider font-mono ml-1 border-[#E5E5E5]">{t("learnFocusMode")}</Badge>
         </div>
 
         {mode === "PRACTICE" && activeExercise && (
@@ -509,9 +509,7 @@ export default function ShadowingPage() {
               size="sm"
               onClick={handleExitPractice}
               className="text-xs text-[#737373] hover:text-[#111111]"
-            >
-              Change Exercise
-            </Button>
+            >{t("learnChangeExercise")}</Button>
           </div>
         )}
       </header>
@@ -524,19 +522,15 @@ export default function ShadowingPage() {
           /* ======================================================================== */
           <div className="w-full max-w-3xl space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold tracking-tight text-[#111111]">Select Shadowing Exercise</h2>
-              <p className="text-sm text-[#737373] max-w-lg mx-auto">
-                Listen to authentic native speech clips and practice voice mimicry with localized recording comparison.
-              </p>
+              <h2 className="text-2xl font-bold tracking-tight text-[#111111]">{t("learnSelectShadowingExercise")}</h2>
+              <p className="text-sm text-[#737373] max-w-lg mx-auto">{t("learnListenToAuthenticNativeSpeechClipsAndPracticeVoiceMimicryWithLocalizedRecordingCompariso")}</p>
             </div>
 
             {listError && (
-              <div className="p-4 rounded-md border border-red-200 bg-red-50 text-red-900 text-sm flex items-center gap-3">
-                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                <span>{listError}</span>
-                <Button variant="outline" size="sm" onClick={loadExercises} className="ml-auto text-xs bg-white">
-                  Retry
-                </Button>
+              <div role="alert" className="p-4 rounded-md border border-border bg-muted text-foreground text-sm flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                <span>{t(listError)}</span>
+                <Button variant="outline" size="sm" onClick={loadExercises} className="ml-auto text-xs bg-white">{t("learnRetry")}</Button>
               </div>
             )}
 
@@ -549,7 +543,7 @@ export default function ShadowingPage() {
             ) : exercises.length === 0 ? (
               <div className="p-12 text-center border border-dashed border-[#E5E5E5] rounded-md bg-white space-y-3">
                 <Mic className="h-8 w-8 text-[#A3A3A3] mx-auto" />
-                <p className="text-sm text-[#737373]">No shadowing exercises available yet.</p>
+                <p className="text-sm text-[#737373]">{t("learnNoShadowingExercisesAvailableYet")}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -576,27 +570,21 @@ export default function ShadowingPage() {
                           <span
                             data-testid="audio-missing-badge"
                             className="text-[11px] font-mono px-2 py-0.5 rounded border border-dashed border-[#A3A3A3] text-[#737373]"
-                          >
-                            Audio Missing
-                          </span>
+                          >{t("learnAudioMissing")}</span>
                         ) : item.audioReadiness === "SYNTHETIC_FIXTURE" || !item.isSpokenSpeech ? (
                           <span
                             data-testid="audio-synthetic-badge"
-                            className="text-[11px] font-mono px-2 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800"
-                          >
-                            Test Tone Fixture
-                          </span>
+                            className="text-[11px] font-mono px-2 py-0.5 rounded border border-border bg-muted text-foreground"
+                          >{t("learnTestToneFixture")}</span>
                         ) : (
                           <span
                             data-testid="audio-spoken-badge"
                             className="text-[11px] font-mono px-2 py-0.5 rounded border border-neutral-200 bg-neutral-50 text-neutral-600"
-                          >
-                            Spoken Audio
-                          </span>
+                          >{t("learnSpokenAudio")}</span>
                         )}
                         {item.takeCount > 0 && (
                           <span className="text-[11px] font-mono text-[#737373] bg-[#F5F5F5] px-2 py-0.5 rounded">
-                            {item.takeCount} {item.takeCount === 1 ? "take" : "takes"}
+                            {item.takeCount} {item.takeCount === 1 ? t("learnTake") : t("learnTakes")}
                           </span>
                         )}
                         {item.lastSelfRating && (
@@ -617,9 +605,10 @@ export default function ShadowingPage() {
                         variant={item.isAudioAvailable ? "outline" : "ghost"}
                         size="sm"
                         disabled={!item.isAudioAvailable || isLoadingDetail}
+                        aria-label={`${t("learnStart")}: ${item.title}`}
+                        onClick={(event) => { event.stopPropagation(); handleSelectExercise(item.contentId); }}
                         className="text-xs h-8 border-[#E5E5E5]"
-                      >
-                        Start <ChevronRight className="h-3 w-3 ml-1" />
+                      >{t("learnStart")}{" "}<ChevronRight className="h-3 w-3 ml-1" />
                       </Button>
                     </div>
                   </div>
@@ -643,7 +632,7 @@ export default function ShadowingPage() {
                 onEnded={() => setIsReferencePlaying(false)}
                 onError={() => {
                   setIsReferencePlaying(false);
-                  setErrorMessage("Failed to load reference audio asset.");
+                  setErrorMessage("learnFailedToLoadReferenceAudioAsset");
                 }}
               />
             )}
@@ -660,56 +649,46 @@ export default function ShadowingPage() {
 
             {/* Error Banners */}
             {errorMessage && (
-              <div className="p-4 rounded-md border border-red-200 bg-red-50 text-red-900 text-sm flex items-center gap-3">
-                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                <span className="flex-1">{errorMessage}</span>
+              <div role="alert" className="p-4 rounded-md border border-border bg-muted text-foreground text-sm flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                <span className="flex-1">{t(errorMessage)}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setErrorMessage(null)}
-                  className="text-xs text-red-700 hover:text-red-900"
-                >
-                  Dismiss
-                </Button>
+                  className="text-xs text-foreground hover:text-foreground"
+                >{t("learnDismiss")}</Button>
               </div>
             )}
 
             {micPermissionDenied && (
-              <div className="p-4 rounded-md border border-amber-200 bg-amber-50 text-amber-900 text-sm space-y-2">
+              <div className="p-4 rounded-md border border-border bg-muted text-foreground text-sm space-y-2">
                 <div className="flex items-center gap-2 font-medium">
-                  <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
-                  <span>Microphone Permission Required</span>
+                  <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
+                  <span>{t("learnMicrophonePermissionRequired")}</span>
                 </div>
-                <p className="text-xs text-amber-800">
-                  Your browser blocked microphone access. To record your shadowing take, please allow microphone access
-                  in your browser site settings.
-                </p>
+                <p className="text-xs text-foreground">{t("learnYourBrowserBlockedMicrophoneAccessToRecordYourShadowingTakePleaseAllowMicrophoneAccessIn")}</p>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={startRecording}
-                  className="text-xs border-amber-300 bg-white"
-                >
-                  Request Permission Again
-                </Button>
+                  className="text-xs border-border bg-white"
+                >{t("learnRequestPermissionAgain")}</Button>
               </div>
             )}
 
             {!mediaRecorderSupported && (
-              <div className="p-4 rounded-md border border-[#E5E5E5] bg-white text-[#737373] text-sm">
-                Voice recording is unavailable in this environment. You can listen to native audio for passive shadowing.
-              </div>
+              <div className="p-4 rounded-md border border-[#E5E5E5] bg-white text-[#737373] text-sm">{t("learnVoiceRecordingIsUnavailableInThisEnvironmentYouCanListenToNativeAudioForPassiveShadowing")}</div>
             )}
 
             {activeExercise?.audioReadiness === "SYNTHETIC_FIXTURE" && (
               <div
                 data-testid="synthetic-notice-banner"
-                className="p-3.5 rounded-md border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-center gap-2"
+                className="p-3.5 rounded-md border border-border bg-muted text-foreground text-xs flex items-center gap-2"
               >
-                <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-foreground shrink-0" />
                 <span>
-                  <strong>Transport Test Fixture:</strong> This exercise uses a synthetic test audio tone for media transport verification, not authentic spoken English.
-                </span>
+                  <strong>{t("learnTransportTestFixture")}</strong>{" "}{t("learnThisExerciseUsesASyntheticTestAudioToneForMediaTransportVerificationNotAuthenticSpokenEn")}</span>
               </div>
             )}
 
@@ -728,9 +707,7 @@ export default function ShadowingPage() {
                 &ldquo;{activeExercise?.transcriptText}&rdquo;
               </blockquote>
 
-              <p className="text-xs text-[#737373] font-mono">
-                Focus on matching cadence, stress, and natural breathing pauses.
-              </p>
+              <p className="text-xs text-[#737373] font-mono">{t("learnFocusOnMatchingCadenceStressAndNaturalBreathingPauses")}</p>
             </div>
 
             {/* Dual Audio Player Cards */}
@@ -739,8 +716,7 @@ export default function ShadowingPage() {
               <div className="p-5 rounded-lg border border-[#E5E5E5] bg-white space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase tracking-wider text-[#737373] flex items-center gap-1.5">
-                    <Volume2 className="h-3.5 w-3.5" /> Native Reference
-                  </span>
+                    <Volume2 className="h-3.5 w-3.5" />{" "}{t("learnNativeReference")}</span>
                   <div className="flex items-center gap-1 bg-[#F5F5F5] p-0.5 rounded">
                     {[0.75, 1.0, 1.25].map((speed) => (
                       <button
@@ -764,7 +740,7 @@ export default function ShadowingPage() {
                     size="icon"
                     onClick={toggleReferenceAudio}
                     className="h-12 w-12 rounded-full border-[#111111] text-[#111111] hover:bg-[#F5F5F5] shrink-0"
-                    aria-label={isReferencePlaying ? "Pause native speech" : "Play native speech"}
+                    aria-label={isReferencePlaying ? t("learnPauseNativeSpeech") : t("learnPlayNativeSpeech")}
                   >
                     {isReferencePlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
                   </Button>
@@ -774,7 +750,7 @@ export default function ShadowingPage() {
                     size="icon"
                     onClick={restartReferenceAudio}
                     className="h-10 w-10 text-[#737373] hover:text-[#111111]"
-                    aria-label="Restart audio from beginning"
+                    aria-label={t("learnRestartAudioFromBeginning")}
                   >
                     <RotateCcw className="h-4 w-4" />
                   </Button>
@@ -789,16 +765,14 @@ export default function ShadowingPage() {
               <div className="p-5 rounded-lg border border-[#E5E5E5] bg-white space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase tracking-wider text-[#737373] flex items-center gap-1.5">
-                    <Mic className="h-3.5 w-3.5" /> Your Take
-                  </span>
+                    <Mic className="h-3.5 w-3.5" />{" "}{t("learnYourTake")}</span>
                   {practiceState === "RECORDING" && (
-                    <span className="flex items-center gap-1.5 text-xs font-mono text-red-600 font-semibold animate-pulse">
-                      <span className="h-2 w-2 rounded-full bg-red-600" />
-                      REC {recordingSeconds}s
+                    <span className="flex items-center gap-1.5 text-xs font-mono text-foreground font-semibold animate-pulse">
+                      <span className="h-2 w-2 rounded-full bg-muted" />{t("learnREC")}{" "}{recordingSeconds}s
                     </span>
                   )}
                   {practiceState === "RECORDED" && (
-                    <span className="text-xs font-mono text-[#737373]">{recordingSeconds}s captured</span>
+                    <span className="text-xs font-mono text-[#737373]">{recordingSeconds}{t("learnSCaptured")}</span>
                   )}
                 </div>
 
@@ -808,8 +782,8 @@ export default function ShadowingPage() {
                       variant="default"
                       size="icon"
                       onClick={stopRecording}
-                      className="h-12 w-12 rounded-full bg-red-600 hover:bg-red-700 text-white shrink-0 animate-pulse"
-                      aria-label="Stop recording"
+                      className="h-12 w-12 rounded-full bg-muted hover:bg-muted text-white shrink-0 animate-pulse"
+                      aria-label={t("learnStopRecording")}
                     >
                       <Square className="h-4 w-4 fill-current" />
                     </Button>
@@ -820,7 +794,7 @@ export default function ShadowingPage() {
                       onClick={startRecording}
                       disabled={!mediaRecorderSupported}
                       className="h-12 w-12 rounded-full border-[#111111] text-[#111111] hover:bg-[#F5F5F5] shrink-0"
-                      aria-label="Start recording"
+                      aria-label={t("learnStartRecording")}
                     >
                       <Mic className="h-5 w-5" />
                     </Button>
@@ -835,7 +809,7 @@ export default function ShadowingPage() {
                         className="text-xs border-[#E5E5E5] flex items-center gap-1.5"
                       >
                         {isUserPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                        {isUserPlaying ? "Pause Take" : "Play Take"}
+                        {isUserPlaying ? t("learnPauseTake") : t("learnPlayTake")}
                       </Button>
 
                       <Button
@@ -843,13 +817,11 @@ export default function ShadowingPage() {
                         size="sm"
                         onClick={handleRecordAgain}
                         className="text-xs text-[#737373] hover:text-[#111111]"
-                      >
-                        Record Again
-                      </Button>
+                      >{t("learnRecordAgain")}</Button>
                     </>
                   ) : (
-                    <span className="text-xs text-[#737373] font-mono">
-                      {practiceState === "RECORDING" ? "Listening to your voice..." : "Press record to mimic speech"}
+                    <span role="status" aria-live="polite" className="text-xs text-[#737373] font-mono">
+                      {practiceState === "RECORDING" ? t("learnListeningToYourVoice") : t("learnPressRecordToMimicSpeech")}
                     </span>
                   )}
                 </div>
@@ -859,55 +831,44 @@ export default function ShadowingPage() {
             {/* Privacy Disclosure */}
             <div className="flex items-center gap-2 px-1 text-xs text-[#737373] font-mono">
               <ShieldCheck className="h-4 w-4 shrink-0 text-neutral-500" />
-              <span>
-                Your voice recording is played back locally in your browser for self-comparison and is not stored on the
-                server.
-              </span>
+              <span>{t("learnYourVoiceRecordingIsPlayedBackLocallyInYourBrowserForSelfComparisonAndIsNotStoredOnTheSe")}</span>
             </div>
 
             {/* Self-Assessment & Completion Section */}
             {practiceState === "COMPLETED" && completionResult ? (
               <div className="p-8 rounded-lg border border-[#111111] bg-white text-center space-y-4 shadow-sm animate-in fade-in duration-200">
                 <CheckCircle2 className="h-10 w-10 text-[#111111] mx-auto" />
-                <h3 className="text-xl font-bold tracking-tight text-[#111111]">Practice Take Completed!</h3>
+                <h3 className="text-xl font-bold tracking-tight text-[#111111]">{t("learnPracticeTakeCompleted")}</h3>
                 <div className="flex items-center justify-center gap-3">
-                  <Badge variant="outline" className="border-[#111111] text-[#111111] font-mono text-sm px-3 py-1">
-                    Self-Rating: {completionResult.selfRating}
+                  <Badge variant="outline" className="border-[#111111] text-[#111111] font-mono text-sm px-3 py-1">{t("learnSelfRating")}{" "}{t(RATING_OPTIONS.find((option) => option.id === completionResult.selfRating)!.label)}
                   </Badge>
-                  <span className="text-xs text-[#737373] font-mono">
-                    Completed at {new Date(completionResult.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  <span className="text-xs text-[#737373] font-mono">{t("learnCompletedAt")}{" "}{new Date(completionResult.completedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
                 <p className="text-xs text-[#737373] font-mono max-w-md mx-auto">
                   {completionResult.verifiedActivityCreated
-                    ? "1 Speech Shadowing take verified and recorded toward today's daily learning goal."
-                    : "Practice take completed locally. Synthetic test tone exercises do not count toward daily learning goal."}
+                    ? t("learn1SpeechShadowingTakeVerifiedAndRecordedTowardTodaySDailyLearningGoal")
+                    : t("learnPracticeTakeCompletedLocallySyntheticTestToneExercisesDoNotCountTowardDailyLearningGoal")}
                 </p>
 
                 <div className="flex items-center justify-center gap-3 pt-4">
-                  <Button variant="outline" size="sm" onClick={handlePracticeAgain} className="border-[#E5E5E5]">
-                    Practice Again
-                  </Button>
-                  <Button variant="default" size="sm" onClick={handleNextExercise} className="bg-[#111111] text-white">
-                    Next Exercise <ArrowRight className="h-4 w-4 ml-1.5" />
+                  <Button variant="outline" size="sm" onClick={handlePracticeAgain} className="border-[#E5E5E5]">{t("learnPracticeAgain")}</Button>
+                  <Button variant="default" size="sm" onClick={handleNextExercise} className="bg-[#111111] text-white">{t("learnNextExercise")}{" "}<ArrowRight className="h-4 w-4 ml-1.5" />
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="p-6 rounded-lg border border-[#E5E5E5] bg-white space-y-5 shadow-sm">
                 <div>
-                  <h4 className="text-sm font-semibold tracking-tight text-[#111111]">
-                    Learner Self-Assessment
-                  </h4>
-                  <p className="text-xs text-[#737373] font-mono">
-                    Listen to your take above and reflect on rhythm, cadence, and clarity.
-                  </p>
+                  <h4 className="text-sm font-semibold tracking-tight text-[#111111]">{t("learnLearnerSelfAssessment")}</h4>
+                  <p className="text-xs text-[#737373] font-mono">{t("learnListenToYourTakeAboveAndReflectOnRhythmCadenceAndClarity")}</p>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                   {RATING_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
+                      aria-pressed={selfRating === opt.id}
                       type="button"
                       disabled={practiceState === "RECORDING" || !userAudioUrl}
                       onClick={() => setSelfRating(opt.id)}
@@ -917,8 +878,8 @@ export default function ShadowingPage() {
                           : "border-[#E5E5E5] hover:border-[#737373] bg-white"
                       } ${practiceState === "RECORDING" || !userAudioUrl ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                      <div className="text-xs font-bold text-[#111111]">{opt.label}</div>
-                      <div className="text-[11px] text-[#737373] mt-1 line-clamp-2">{opt.desc}</div>
+                      <div className="text-xs font-bold text-[#111111]">{t(opt.label)}</div>
+                      <div className="text-[11px] text-[#737373] mt-1 line-clamp-2">{t(opt.desc)}</div>
                     </button>
                   ))}
                 </div>
@@ -926,10 +887,10 @@ export default function ShadowingPage() {
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-xs text-[#737373] font-mono">
                     {!userAudioUrl
-                      ? "Record a take to unlock self-assessment"
+                      ? t("learnRecordATakeToUnlockSelfAssessment")
                       : !selfRating
-                      ? "Select a self-rating to finish"
-                      : "Ready to complete"}
+                      ? t("learnSelectASelfRatingToFinish")
+                      : t("learnReadyToComplete")}
                   </span>
 
                   <Button
@@ -939,10 +900,9 @@ export default function ShadowingPage() {
                     className="bg-[#111111] hover:bg-[#333333] text-white px-6 font-medium"
                   >
                     {practiceState === "SUBMITTING" ? (
-                      "Recording Take..."
+                      t("learnRecordingTake")
                     ) : (
-                      <>
-                        Complete Practice <Sparkles className="h-4 w-4 ml-1.5" />
+                      <>{t("learnCompletePractice")}{" "}<Sparkles className="h-4 w-4 ml-1.5" />
                       </>
                     )}
                   </Button>

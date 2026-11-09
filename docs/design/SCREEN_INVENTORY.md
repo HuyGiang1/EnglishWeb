@@ -18,6 +18,13 @@ Vocabulary and individual learning feature screens remain outside this delivery.
 No Folder/Study Set schema migration or M3-EVO-1C-2 work is included.
 
 
+**M3-EVO-1C-2 delivery note:** Existing Vocabulary list/detail/Quick Add, study
+sets/detail/membership, CSV/TSV import, Review, Dictation, Shadowing and Quiz UI
+now support vi-VN/en. Routes, IDs, payloads, learning material and algorithms stay
+unchanged. Language controls on module headers retain the active page/session.
+Set-specific review remains unverified separate M3-EVO-3 work; no Folder schema
+or new learning feature is included. See LOCALIZATION.md for verification limits.
+
 EnglishFlow operates two distinct structural layouts:
 1. **Workspace Shell**: Standard layout for browsing, managing, and configuring. Contains a sticky top navigation bar (mobile) or persistent collapsible left sidebar (desktop), global search trigger (`Mod+K`), input-safe quick add trigger (`C` when not typing), and profile menu.
 2. **Focus Learning Shell**: Full-screen distraction-free canvas used for study sessions (Flashcard Review, Dictation, Shadowing, Quiz). The global sidebar and secondary navigation are completely unmounted. An escape latch with unsaved-work confirmation and a minimalist top progress bar are the only persistent chrome elements.

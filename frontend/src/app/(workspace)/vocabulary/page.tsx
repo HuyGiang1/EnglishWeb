@@ -1,5 +1,9 @@
 "use client";
 
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -33,9 +37,10 @@ import {
 } from "@/lib/api/vocabulary";
 
 export default function VocabularyPage() {
+  const { t } = useLocale();
   const [data, setData] = React.useState<VocabularyPageResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<TranslationKey | null>(null);
 
   // Filters & Pagination State
   const [search, setSearch] = React.useState("");
@@ -76,7 +81,7 @@ export default function VocabularyPage() {
       });
       setData(response);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load vocabulary list";
+      const msg = learningErrorKey(err, "learnFailedToLoadVocabularyList");
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -126,7 +131,7 @@ export default function VocabularyPage() {
       setItemToDelete(null);
       await fetchData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete item";
+      const msg = learningErrorKey(err, "learnFailedToDeleteItem");
       setError(msg);
     } finally {
       setIsDeleting(false);
@@ -138,23 +143,18 @@ export default function VocabularyPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="learning-module space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Vocabulary Library
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnVocabularyLibrary")}</h1>
             {data && (
               <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-mono font-medium text-muted-foreground">
-                {data.totalElements} words
-              </span>
+                {data.totalElements}{" "}{t("learnWords")}</span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Personal lexical inventory with definitions, phonetics, and contextual examples.
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">{t("learnPersonalLexicalInventoryWithDefinitionsPhoneticsAndContextualExamples")}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -162,12 +162,9 @@ export default function VocabularyPage() {
             href="/vocabulary/import"
             className={cn(buttonVariants({ variant: "outline" }))}
           >
-            <Upload className="mr-1.5 h-4 w-4" />
-            Import
-          </Link>
+            <Upload className="mr-1.5 h-4 w-4" />{t("learnImport")}</Link>
           <Button onClick={() => setIsQuickAddOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Word <kbd className="ml-1 text-[10px] font-mono opacity-60">C</kbd>
+            <Plus className="mr-1.5 h-4 w-4" />{t("learnAddWord")}{" "}<kbd className="ml-1 text-[10px] font-mono opacity-60">C</kbd>
           </Button>
         </div>
       </div>
@@ -181,7 +178,7 @@ export default function VocabularyPage() {
             <Input
               ref={searchInputRef}
               type="search"
-              placeholder="Search word, meaning..."
+              aria-label={t("learnSearchWordMeaning")} placeholder={t("learnSearchWordMeaning")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 pr-8"
@@ -199,18 +196,18 @@ export default function VocabularyPage() {
               setPage(0);
             }}
             className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label="Filter by part of speech"
+            aria-label={t("learnFilterByPartOfSpeech")}
           >
-            <option value="">All Parts of Speech</option>
-            <option value="noun">Noun</option>
-            <option value="verb">Verb</option>
-            <option value="adjective">Adjective</option>
-            <option value="adverb">Adverb</option>
-            <option value="idiom">Idiom</option>
-            <option value="phrase">Phrase</option>
-            <option value="preposition">Preposition</option>
-            <option value="conjunction">Conjunction</option>
-            <option value="other">Other</option>
+            <option value="">{t("learnAllPartsOfSpeech")}</option>
+            <option value="noun">{t("learnNoun")}</option>
+            <option value="verb">{t("learnVerb")}</option>
+            <option value="adjective">{t("learnAdjective")}</option>
+            <option value="adverb">{t("learnAdverb")}</option>
+            <option value="idiom">{t("learnIdiom")}</option>
+            <option value="phrase">{t("learnPhrase")}</option>
+            <option value="preposition">{t("learnPreposition")}</option>
+            <option value="conjunction">{t("learnConjunction")}</option>
+            <option value="other">{t("learnOther")}</option>
           </select>
 
           {/* CEFR Level Filter */}
@@ -221,9 +218,9 @@ export default function VocabularyPage() {
               setPage(0);
             }}
             className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label="Filter by CEFR level"
+            aria-label={t("learnFilterByCEFRLevel")}
           >
-            <option value="">All CEFR Levels</option>
+            <option value="">{t("learnAllCEFRLevels")}</option>
             <option value="A1">A1</option>
             <option value="A2">A2</option>
             <option value="B1">B1</option>
@@ -235,7 +232,7 @@ export default function VocabularyPage() {
 
         {/* Sort Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Sort:</span>
+          <span className="text-xs text-muted-foreground">{t("learnSort")}</span>
           <select
             value={sort}
             onChange={(e) => {
@@ -243,11 +240,11 @@ export default function VocabularyPage() {
               setPage(0);
             }}
             className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label="Sort vocabulary items"
+            aria-label={t("learnSortVocabularyItems")}
           >
-            <option value="createdAt,desc">Recently Added</option>
-            <option value="term,asc">Alphabetical (A–Z)</option>
-            <option value="updatedAt,desc">Last Updated</option>
+            <option value="createdAt,desc">{t("learnRecentlyAdded")}</option>
+            <option value="term,asc">{t("learnAlphabeticalAZ")}</option>
+            <option value="updatedAt,desc">{t("learnLastUpdated")}</option>
           </select>
         </div>
       </div>
@@ -260,11 +257,9 @@ export default function VocabularyPage() {
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-neutral-700" />
-            <span>{error}</span>
+            <span>{t(error)}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            Retry
-          </Button>
+          <Button variant="outline" size="sm" onClick={fetchData}>{t("learnRetry")}</Button>
         </div>
       )}
 
@@ -288,18 +283,16 @@ export default function VocabularyPage() {
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground mb-3 opacity-60" />
           <h2 className="text-base font-semibold text-foreground mb-1">
             {search || partOfSpeech || difficultyLevel
-              ? "No matching vocabulary words"
-              : "Your vocabulary library is empty"}
+              ? t("learnNoMatchingVocabularyWords")
+              : t("learnYourVocabularyLibraryIsEmpty")}
           </h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
             {search || partOfSpeech || difficultyLevel
-              ? "Try adjusting your search query or filters to find what you are looking for."
-              : "Capture new words with phonetics, definitions, and examples as you study."}
+              ? t("learnTryAdjustingYourSearchQueryOrFiltersToFindWhatYouAreLookingFor")
+              : t("learnCaptureNewWordsWithPhoneticsDefinitionsAndExamplesAsYouStudy")}
           </p>
           <Button onClick={() => setIsQuickAddOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Your First Word
-          </Button>
+            <Plus className="mr-1.5 h-4 w-4" />{t("learnAddYourFirstWord")}</Button>
         </div>
       )}
 
@@ -311,12 +304,12 @@ export default function VocabularyPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                 <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">Term</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Phonetic</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Part of Speech</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Vietnamese Meaning</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{t("learnTerm")}</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{t("learnPhonetic")}</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{t("learnPartOfSpeech")}</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{t("learnVietnameseMeaning")}</th>
                   <th scope="col" className="px-4 py-3 font-semibold">CEFR</th>
-                  <th scope="col" className="px-4 py-3 font-semibold text-right">Actions</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-right">{t("learnActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -358,7 +351,7 @@ export default function VocabularyPage() {
                         <Link
                           href={`/vocabulary/${item.id}`}
                           className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-                          aria-label={`View ${item.term}`}
+                          aria-label={t("learnViewWord", { term: item.term })}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
@@ -367,7 +360,7 @@ export default function VocabularyPage() {
                           size="sm"
                           className="text-neutral-500 hover:text-black hover:bg-neutral-100"
                           onClick={() => setItemToDelete(item)}
-                          aria-label={`Delete ${item.term}`}
+                          aria-label={t("learnDeleteWord", { term: item.term })}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -420,17 +413,13 @@ export default function VocabularyPage() {
                   <Link
                     href={`/vocabulary/${item.id}`}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                  >
-                    View & Edit
-                  </Link>
+                  >{t("learnViewEdit")}</Link>
                   <Button
                     variant="outline"
                     size="sm"
                     className="text-neutral-600 hover:text-black"
                     onClick={() => setItemToDelete(item)}
-                  >
-                    Delete
-                  </Button>
+                  >{t("learnDelete")}</Button>
                 </div>
               </div>
             ))}
@@ -439,10 +428,8 @@ export default function VocabularyPage() {
           {/* Pagination Controls */}
           {data.totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border pt-4 text-sm">
-              <span className="text-xs text-muted-foreground">
-                Showing {page * 20 + 1}–{Math.min((page + 1) * 20, data.totalElements)} of{" "}
-                {data.totalElements} items
-              </span>
+              <span className="text-xs text-muted-foreground">{t("learnShowing")}{" "}{page * 20 + 1}–{Math.min((page + 1) * 20, data.totalElements)}{" "}{t("learnOf")}{" "}
+                {data.totalElements}{" "}{t("learnItems")}</span>
 
               <div className="flex items-center gap-2">
                 <Button
@@ -451,20 +438,15 @@ export default function VocabularyPage() {
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
-                  <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-                  Previous
-                </Button>
-                <span className="font-mono text-xs text-foreground px-2">
-                  Page {page + 1} of {data.totalPages}
+                  <ChevronLeft className="mr-1 h-3.5 w-3.5" />{t("learnPrevious")}</Button>
+                <span className="font-mono text-xs text-foreground px-2">{t("learnPage")}{" "}{page + 1}{" "}{t("learnOf")}{" "}{data.totalPages}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
                   disabled={page >= data.totalPages - 1}
-                >
-                  Next
-                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                >{t("learnNext")}<ChevronRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -486,22 +468,17 @@ export default function VocabularyPage() {
           if (!open) setItemToDelete(null);
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="learning-module max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Vocabulary Word?</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete <strong>&quot;{itemToDelete?.term}&quot;</strong>? This
-              word will be soft-deleted and removed from your library.
-            </DialogDescription>
+            <DialogTitle>{t("learnDeleteVocabularyWord")}</DialogTitle>
+            <DialogDescription>{t("learnAreYouSureYouWantToDelete")}{" "}<strong>&quot;{itemToDelete?.term}&quot;</strong>{t("learnThisWordWillBeSoftDeletedAndRemovedFromYourLibrary")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 pt-4">
             <Button
               variant="outline"
               onClick={() => setItemToDelete(null)}
               disabled={isDeleting}
-            >
-              Cancel
-            </Button>
+            >{t("learnCancel")}</Button>
             <Button
               variant="outline"
               className="border-neutral-300 text-neutral-900 hover:bg-neutral-100"
@@ -510,11 +487,9 @@ export default function VocabularyPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("learnDeleting")}</>
               ) : (
-                "Confirm Delete"
+                t("learnConfirmDelete")
               )}
             </Button>
           </DialogFooter>

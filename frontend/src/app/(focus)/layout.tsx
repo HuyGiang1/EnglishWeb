@@ -6,7 +6,7 @@ export default function FocusLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="app-shell learning-module flex min-h-screen flex-col bg-background">
       <FocusHeader />
       <main className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 lg:p-10 max-w-3xl w-full mx-auto">
         {children}

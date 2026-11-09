@@ -1,13 +1,14 @@
-# EnglishFlow localization — M3-EVO-1A / 1B / 1C-1
+# EnglishFlow localization — M3-EVO-1A / 1B / 1C-1 / 1C-2
 
 ## Scope and resolution
 
-Localized scope now includes Login/Register, authenticated navigation/header,
-Dashboard and its activity heatmap, Settings, session-loading copy and the shared
-Focus header. Individual Vocabulary/Collections/Review/Dictation/Shadowing/Quiz
-feature pages, public landing page and document metadata are not translated in
-M3-EVO-1C-1. User content is never automatically translated. M3-EVO-1B account
-preference behavior and V11 remain unchanged by this frontend-only increment.
+Localized scope includes Login/Register, shell, Dashboard/heatmap, Settings,
+Vocabulary list/detail/Quick Add, study sets and membership dialogs, CSV/TSV
+import, flashcard review, dictation, shadowing and quiz. Learning-module UI was
+added in M3-EVO-1C-2. The public landing page and document metadata remain English.
+User vocabulary, definitions, notes, examples, lesson titles/topics/transcripts,
+quiz prompts/options/explanations and stored learning records are never translated.
+M3-EVO-1B account preference behavior and Flyway V11 are unchanged.
 
 `frontend/src/lib/i18n/config.ts` owns the supported values `vi-VN` and `en`.
 The root server layout reads `englishflow_locale` using Next.js `cookies()`.
@@ -30,9 +31,8 @@ Persistence depends on browser cookie support and ends when users clear cookies.
 Explicit account preferences synchronize on a new authenticated session/device.
 There is no cross-tab live synchronization.
 
-The root document language follows the preference globally; remaining feature
-screens still contain English pending later tasks. This is partial application
-localization, not a claim that every screen has been translated.
+The root document language follows the preference globally; learning content intentionally remains in its original language. Landing-page
+copy and document metadata are outside the current localization scope.
 
 ## Using translations
 
@@ -378,3 +378,136 @@ browser UI zoom, Safari, physical devices and a full screen-reader audit are not
 certified. Feature-page translations, Folder/Study Sets, media providers and AI
 assessment remain outside this task. Original roadmap header metadata is still
 historical; the latest-delivery notes in PROJECT_STATUS track these increments.
+
+
+## M3-EVO-1C-2 — Learning modules (2026-11-09)
+
+### Implementation and boundaries
+
+- `learning-dictionaries.ts` extends the existing typed English/Vietnamese catalog.
+  `learning-errors.ts` maps stable error codes through the existing safe mapper,
+  including duplicate study-set titles. Error/validation state stores keys and
+  resolves text at render, so existing messages translate without resetting drafts.
+  Import row messages use safe, localized invalid/duplicate guidance rather than
+  rendering arbitrary backend `validationMessage`/`reason` text. No parser or
+  backend error contract changes were made; detailed field-specific parser reasons
+  need stable codes in a separate task if desired.
+- Vocabulary list, search/filter/sort, detail/edit/delete and Quick Add are localized.
+  Quick Add orders Word/Phrase, Meaning, then part of speech/IPA. Native `details`
+  groups optional definition/example/level/set fields without unmounting registered
+  controls; collapsing it keeps all values. Validation limits, trimming, duplicate
+  checking, membership IDs and mutation payloads are unchanged. User-entered
+  definitions/examples and example learning-material placeholders remain original.
+- Collection UI uses Study sets / Bộ từ. Existing entities, URLs, endpoints,
+  create/edit/delete and membership operations are unchanged. Safe removal/deletion
+  explanations remain explicit. No Folder entity or scoped-review integration was added.
+- Import shows select-file / review-data / confirm steps, template links, required
+  column names, existing CSV/TSV limits, duplicate policy, preview filters, row
+  status and result counts. File acceptance, parser, valid/duplicate selection,
+  confirmation payload and automatic flashcard creation policy are unchanged.
+  The existing `.txt` extension alias remains accepted; no new format is advertised.
+- Review uses Chưa nhớ / Khó / Nhớ / Rất dễ while submitting the unchanged
+  AGAIN / HARD / GOOD / EASY values. Queue, attempt IDs, retry, intervals and
+  session results retain their original data sources. Localized progress and
+  summary messages do not infer new schedules.
+- Dictation localizes lesson selection, playback, input, comparison and results.
+  Reference transcripts/diff tokens and backend scores remain untouched. Missing
+  media stays unavailable; learner copy no longer asks users to run developer scripts.
+- Shadowing localizes recording, permission/unsupported-browser guidance, playback,
+  self-rating and completion. The same MediaRecorder, 60-second cap, track stopping,
+  object-URL revocation, local-only recording and completion payload remain. No
+  upload, AI assessment, provider or licensing change was introduced. Synthetic
+  fixtures retain honest test-tone notices and existing activity eligibility.
+- Quiz localizes directory/history, progress, answer controls, confirmation and
+  scorecard. Questions/options/canonical answers/explanations remain English
+  learning material. Confirmation uses the existing Base UI Dialog for keyboard
+  containment/Escape/focus return; scoring, attempts and draft/final requests remain.
+- Existing LanguageSwitcher is available on vocabulary/set headers, FocusHeader
+  and vocabulary/set form dialogs.
+  It uses the existing provider/cookie/account save behavior. No locale key/remount
+  is introduced. Review/shadowing shortcuts ignore selects/buttons; lesson cards
+  and membership choices expose keyboard actions, and quiz input has a label.
+  Learning controls wrap at narrow widths and respect existing reduced-motion CSS.
+
+### Separate M3-EVO-3 discovery — not implemented
+
+`reviewApi.getQueue` accepts `collectionId`, but the current Review page loads only
+`{ limit: 50 }` and does not consume a collection query parameter. Collection pages
+manage membership without a verified set-specific review launch. Treat scoped
+review as separate M3-EVO-3 work; this milestone makes no claim that it works and
+changes no backend filtering or scheduling. M3-EVO-2/M3-EVO-3 are not completed.
+
+### Reproducible checks
+
+From `frontend/`:
+
+```sh
+node --test src/lib/__tests__/learning-localization.test.mjs
+npm test
+npm run typecheck -- --incremental false
+npm run lint
+```
+
+From repository root: `git diff --check`.
+
+The new tests render production pages/QuickAddDialog with the real locale provider,
+forms, modal and API client. Next routing adapters and HTTP/media devices are
+mocked. `learning-fixtures.mjs` is shared deterministic test data, not production
+seed data. Test-only params support extends the existing Next adapter stub.
+
+Browser smoke driver: `/tmp/englishflow-1c2-browser.mjs`; log:
+`/tmp/englishflow-1c2-browser.log`. It uses isolated headless Chrome profiles and
+intercepts every API request, with a test-only silent WAV response for playback
+transport. It never calls the backend or changes a database. The temporary driver
+is not a committed Playwright suite. Text sizing uses 200% root font size rather
+than native browser UI zoom. Native microphone capture/OS prompts, Safari, physical
+mobile devices and full screen-reader certification remain manual verification.
+
+Manual verification on authorized fixtures: visit `/vocabulary`,
+`/vocabulary/{id}`, `/vocabulary/import`, `/collections`, `/collections/{id}`,
+`/review`, `/dictation`, `/shadowing`, `/quiz` in both languages and at
+320/375/768/1280 CSS pixels. Tab through language, search/filter and audio controls;
+use keyboard lesson selection, quiz modal Escape and focus return. Enter optional
+vocabulary details, collapse/reopen and switch language; keep values/errors.
+Reveal a review card, retry a failed grade, type a dictation and answer quiz
+questions while switching language; preserve content, answers and attempt IDs.
+With explicit microphone permission on a test device, record, stop, compare,
+self-rate and complete; deny permission separately to inspect guidance. Use only
+isolated/mock fixtures for mutation checks, never live user data.
+
+Production-audio milestones, schema/API/security, algorithms and dependencies are
+outside this task and remain unchanged. No commit, push or deployment is authorized.
+
+
+### Verification record — M3-EVO-1C-2
+
+- `node --test src/lib/__tests__/learning-localization.test.mjs`: exit 0,
+  45 tests / 1 suite; 45 passed, 0 failed/skipped.
+- `npm test`: exit 0; 221 tests / 64 suites, 221 passed, 0 failed/skipped.
+  Includes the original 176 tests and 45 new production-component cases.
+- `npm run typecheck -- --incremental false`: exit 0.
+- `npm run lint`: exit 0, no warnings.
+- `git diff --check`: exit 0.
+- `node /tmp/englishflow-1c2-browser.mjs`: exit 0; 72 route/locale/width checks
+  (9 routes × 2 locales × 4 widths) and 26 interaction/text-size checks. Both
+  locales cover preserved review/quiz/dictation state, native keyboard lesson
+  start, quiz Dialog Tab containment/Escape/focus return, Quick Add language/draft
+  preservation, 200% root text sizing and reduced motion. No hydration/runtime
+  exception detected. APIs and test WAV transport were intercepted throughout.
+- Backend, scripts/infra, dependency manifests/configuration and the excluded
+  historical handoff were compared to the task-start SHA-256 manifest and remain
+  unchanged. An AST audit found identical argument/payload expressions for all
+  50 existing API calls across the 13 changed TSX files.
+- Logs: `/tmp/englishflow-1c2-targeted.log`,
+  `/tmp/englishflow-1c2-regression.log`, `/tmp/englishflow-1c2-browser.log`.
+  Task-start manifest: `/tmp/englishflow-1c2-baseline.json`.
+- During development, targeted tests caught test-harness assumptions about quoted
+  transcripts, duplicate explanation text and minimum recording duration; these
+  were corrected without bypassing production guards. Browser driver retries
+  corrected keyboard dispatch and DOM serialization; only the final complete
+  exit-0 run above is the claimed browser result.
+
+Remaining untranslated surfaces: public landing page and document metadata.
+English learning material, original user content, CEFR codes, import column names
+and stored metadata intentionally stay unchanged. Ad hoc Chrome smoke is not a
+full browser/device/screen-reader certification or a real backend regression.

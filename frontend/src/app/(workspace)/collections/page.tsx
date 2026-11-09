@@ -1,5 +1,10 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -35,9 +40,10 @@ import {
 import { ApiError } from "@/lib/api/client";
 
 export default function CollectionsPage() {
+  const { t, locale } = useLocale();
   const [data, setData] = React.useState<CollectionPageResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<TranslationKey | null>(null);
 
   // Search & Filter
   const [search, setSearch] = React.useState("");
@@ -46,18 +52,18 @@ export default function CollectionsPage() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [newTitle, setNewTitle] = React.useState("");
   const [newDescription, setNewDescription] = React.useState("");
-  const [createError, setCreateError] = React.useState<string | null>(null);
+  const [createError, setCreateError] = React.useState<TranslationKey | null>(null);
   const [isCreating, setIsCreating] = React.useState(false);
 
   const [editingItem, setEditingItem] = React.useState<CollectionItem | null>(null);
   const [editTitle, setEditTitle] = React.useState("");
   const [editDescription, setEditDescription] = React.useState("");
-  const [editError, setEditError] = React.useState<string | null>(null);
+  const [editError, setEditError] = React.useState<TranslationKey | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   const [itemToDelete, setItemToDelete] = React.useState<CollectionItem | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
-  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<TranslationKey | null>(null);
 
   const fetchCollections = React.useCallback(async () => {
     setIsLoading(true);
@@ -67,9 +73,9 @@ export default function CollectionsPage() {
       setData(response);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(learningErrorKey(err));
       } else {
-        setError("Failed to load collections. Please check your connection.");
+        setError("learnFailedToLoadCollectionsPleaseCheckYourConnection");
       }
     } finally {
       setIsLoading(false);
@@ -84,11 +90,11 @@ export default function CollectionsPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
-      setCreateError("Collection title is required.");
+      setCreateError("learnCollectionTitleIsRequired");
       return;
     }
     if (newTitle.trim().length > 100) {
-      setCreateError("Collection title must not exceed 100 characters.");
+      setCreateError("learnCollectionTitleMustNotExceed100Characters");
       return;
     }
 
@@ -106,12 +112,12 @@ export default function CollectionsPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TITLE_ALREADY_EXISTS") {
-          setCreateError("A collection with this title already exists.");
+          setCreateError("learnACollectionWithThisTitleAlreadyExists");
         } else {
-          setCreateError(err.message);
+          setCreateError(learningErrorKey(err));
         }
       } else {
-        setCreateError("An unexpected error occurred while creating collection.");
+        setCreateError("learnAnUnexpectedErrorOccurredWhileCreatingCollection");
       }
     } finally {
       setIsCreating(false);
@@ -132,11 +138,11 @@ export default function CollectionsPage() {
     if (!editingItem) return;
 
     if (!editTitle.trim()) {
-      setEditError("Collection title is required.");
+      setEditError("learnCollectionTitleIsRequired");
       return;
     }
     if (editTitle.trim().length > 100) {
-      setEditError("Collection title must not exceed 100 characters.");
+      setEditError("learnCollectionTitleMustNotExceed100Characters");
       return;
     }
 
@@ -152,12 +158,12 @@ export default function CollectionsPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "TITLE_ALREADY_EXISTS") {
-          setEditError("A collection with this title already exists.");
+          setEditError("learnACollectionWithThisTitleAlreadyExists");
         } else {
-          setEditError(err.message);
+          setEditError(learningErrorKey(err));
         }
       } else {
-        setEditError("Failed to update collection.");
+        setEditError("learnFailedToUpdateCollection");
       }
     } finally {
       setIsUpdating(false);
@@ -176,9 +182,9 @@ export default function CollectionsPage() {
       await fetchCollections();
     } catch (err) {
       if (err instanceof ApiError) {
-        setDeleteError(err.message);
+        setDeleteError(learningErrorKey(err));
       } else {
-        setDeleteError("Failed to delete collection.");
+        setDeleteError("learnFailedToDeleteCollection");
       }
     } finally {
       setIsDeleting(false);
@@ -192,14 +198,12 @@ export default function CollectionsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="learning-module space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Collections & Decks</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Curate thematic decks and organize your vocabulary for focused study sessions.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnCollectionsDecks")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("learnCurateThematicDecksAndOrganizeYourVocabularyForFocusedStudySessions")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -213,7 +217,7 @@ export default function CollectionsPage() {
             id="create-collection-btn"
           >
             <Plus className="h-4 w-4" />
-            <span>Create Collection</span>
+            <span>{t("learnCreateCollection")}</span>
           </Button>
         </div>
       </div>
@@ -225,7 +229,7 @@ export default function CollectionsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search collections by title or description..."
+            aria-label={t("learnSearchCollectionsByTitleOrDescription")} placeholder={t("learnSearchCollectionsByTitleOrDescription")}
             className="pl-9 bg-background"
             id="search-collections-input"
           />
@@ -255,10 +259,8 @@ export default function CollectionsPage() {
       {!isLoading && error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-5 text-center space-y-3">
           <AlertCircle className="h-6 w-6 text-destructive mx-auto" />
-          <p className="text-sm font-medium text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchCollections}>
-            Retry
-          </Button>
+          <p className="text-sm font-medium text-destructive">{t(error)}</p>
+          <Button variant="outline" size="sm" onClick={fetchCollections}>{t("learnRetry")}</Button>
         </div>
       )}
 
@@ -270,12 +272,12 @@ export default function CollectionsPage() {
           </div>
           <div>
             <h3 className="text-base font-semibold text-foreground">
-              {search ? "No matching collections" : "No collections yet"}
+              {search ? t("learnNoMatchingCollections") : t("learnNoCollectionsYet")}
             </h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
               {search
-                ? `No collections matched "${search}". Try searching with a different keyword.`
-                : "Organize words by topic, IELTS units, or custom study decks to target specific vocabulary."}
+                ? t("learnNoSetsMatch", { search })
+                : t("learnOrganizeWordsByTopicIELTSUnitsOrCustomStudyDecksToTargetSpecificVocabulary")}
             </p>
           </div>
           {!search && (
@@ -284,9 +286,7 @@ export default function CollectionsPage() {
               variant="outline"
               className="mt-2"
             >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create your first collection
-            </Button>
+              <Plus className="h-4 w-4 mr-1.5" />{t("learnCreateYourFirstCollection")}</Button>
           )}
         </div>
       )}
@@ -309,19 +309,19 @@ export default function CollectionsPage() {
                   </Link>
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground whitespace-nowrap">
                     <Layers className="h-3 w-3 mr-1" />
-                    {col.wordCount === 1 ? "1 word" : `${col.wordCount} words`}
+                    {t("learnWordCount", { count: col.wordCount })}
                   </span>
                 </div>
 
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-2 min-h-[2.5rem]">
-                  {col.description || "No description provided."}
+                  {col.description || t("learnNoDescriptionProvided")}
                 </p>
               </div>
 
               <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {new Date(col.updatedAt).toLocaleDateString("en-US", {
+                  {new Date(col.updatedAt).toLocaleDateString(locale, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
@@ -334,27 +334,25 @@ export default function CollectionsPage() {
                     size="sm"
                     className="h-8 px-2 text-muted-foreground hover:text-foreground"
                     onClick={() => handleOpenEdit(col)}
-                    title="Edit Collection"
+                    title={t("learnEditCollection")}
                   >
                     <Edit2 className="h-3.5 w-3.5" />
-                    <span className="sr-only">Edit</span>
+                    <span className="sr-only">{t("learnEdit")}</span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-muted-foreground hover:text-destructive"
                     onClick={() => setItemToDelete(col)}
-                    title="Delete Collection"
+                    title={t("learnDeleteCollection")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span className="sr-only">Delete</span>
+                    <span className="sr-only">{t("learnDelete")}</span>
                   </Button>
                   <Link
                     href={`/collections/${col.id}`}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5 ml-1 text-xs inline-flex items-center")}
-                  >
-                    Open
-                    <ExternalLink className="h-3 w-3 ml-1" />
+                  >{t("learnOpen")}<ExternalLink className="h-3 w-3 ml-1" />
                   </Link>
                 </div>
               </div>
@@ -365,29 +363,28 @@ export default function CollectionsPage() {
 
       {/* CREATE COLLECTION DIALOG */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleCreateSubmit} className="space-y-4">
+        <DialogContent className="learning-module sm:max-w-md">
+          <form noValidate onSubmit={handleCreateSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Create Collection</DialogTitle>
-              <DialogDescription>
-                Create a thematic deck to group and review related vocabulary items.
-              </DialogDescription>
+            <LanguageSwitcher />
+              <DialogTitle>{t("learnCreateCollection")}</DialogTitle>
+              <DialogDescription>{t("learnCreateAThematicDeckToGroupAndReviewRelatedVocabularyItems")}</DialogDescription>
             </DialogHeader>
 
             {createError && (
-              <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {createError}
+              <div role="alert" id="create-title-error" className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+                {t(createError)}
               </div>
             )}
 
             <div className="space-y-3 py-1">
               <div className="space-y-1.5">
-                <Label htmlFor="create-title">Collection Title *</Label>
+                <Label htmlFor="create-title">{t("learnCollectionTitle")}</Label>
                 <Input
-                  id="create-title"
+                  id="create-title" aria-invalid={!!createError} aria-describedby={createError ? "create-title-error" : undefined}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. IELTS Academic Core, Phrasal Verbs"
+                  placeholder={t("learnEGIELTSAcademicCorePhrasalVerbs")}
                   maxLength={100}
                   required
                   autoFocus
@@ -395,12 +392,12 @@ export default function CollectionsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="create-description">Description (optional)</Label>
+                <Label htmlFor="create-description">{t("learnDescriptionOptional")}</Label>
                 <Textarea
                   id="create-description"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="e.g. High-frequency vocabulary for IELTS Reading & Writing tasks"
+                  placeholder={t("learnEGHighFrequencyVocabularyForIELTSReadingWritingTasks")}
                   rows={3}
                 />
               </div>
@@ -412,17 +409,13 @@ export default function CollectionsPage() {
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
                 disabled={isCreating}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button type="submit" disabled={isCreating} id="submit-create-collection-btn">
                 {isCreating ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                    Creating...
-                  </>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t("learnCreating")}</>
                 ) : (
-                  "Create Collection"
+                  t("learnCreateCollection")
                 )}
               </Button>
             </DialogFooter>
@@ -432,26 +425,25 @@ export default function CollectionsPage() {
 
       {/* EDIT COLLECTION DIALOG */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleUpdateSubmit} className="space-y-4">
+        <DialogContent className="learning-module sm:max-w-md">
+          <form noValidate onSubmit={handleUpdateSubmit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Edit Collection</DialogTitle>
-              <DialogDescription>
-                Update the title and description for this deck.
-              </DialogDescription>
+            <LanguageSwitcher />
+              <DialogTitle>{t("learnEditCollection")}</DialogTitle>
+              <DialogDescription>{t("learnUpdateTheTitleAndDescriptionForThisDeck")}</DialogDescription>
             </DialogHeader>
 
             {editError && (
-              <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {editError}
+              <div role="alert" id="edit-title-error" className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+                {t(editError)}
               </div>
             )}
 
             <div className="space-y-3 py-1">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-title">Collection Title *</Label>
+                <Label htmlFor="edit-title">{t("learnCollectionTitle")}</Label>
                 <Input
-                  id="edit-title"
+                  id="edit-title" aria-invalid={!!editError} aria-describedby={editError ? "edit-title-error" : undefined}
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   maxLength={100}
@@ -461,7 +453,7 @@ export default function CollectionsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-description">Description</Label>
+                <Label htmlFor="edit-description">{t("learnDescription")}</Label>
                 <Textarea
                   id="edit-description"
                   value={editDescription}
@@ -477,17 +469,13 @@ export default function CollectionsPage() {
                 variant="outline"
                 onClick={() => setEditingItem(null)}
                 disabled={isUpdating}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button type="submit" disabled={isUpdating} id="submit-update-collection-btn">
                 {isUpdating ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                    Saving...
-                  </>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t("learnSaving")}</>
                 ) : (
-                  "Save Changes"
+                  t("learnSaveChanges")
                 )}
               </Button>
             </DialogFooter>
@@ -497,30 +485,25 @@ export default function CollectionsPage() {
 
       {/* DELETE CONFIRMATION DIALOG (NON-DESTRUCTIVE SEMANTICS) */}
       <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="learning-module sm:max-w-md">
           <div className="space-y-4">
             <DialogHeader>
+            <LanguageSwitcher />
               <DialogTitle className="text-destructive flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Delete Collection
-              </DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete <span className="font-semibold text-foreground">&quot;{itemToDelete?.title}&quot;</span>?
+                <AlertCircle className="h-5 w-5" />{t("learnDeleteCollection")}</DialogTitle>
+              <DialogDescription>{t("learnAreYouSureYouWantToDelete")}{" "}<span className="font-semibold text-foreground">&quot;{itemToDelete?.title}&quot;</span>?
               </DialogDescription>
             </DialogHeader>
 
             <div className="rounded-md border border-border bg-muted/50 p-3.5 text-xs text-muted-foreground space-y-1.5">
-              <p className="font-medium text-foreground">Non-destructive Deletion Guarantee:</p>
-              <p>
-                Deleting this collection removes only the deck organization. All{" "}
-                <span className="font-medium text-foreground">{itemToDelete?.wordCount || 0} vocabulary words</span>{" "}
-                inside it will remain safe in your Vocabulary Library, and your Spaced Repetition (SRS) review schedules and learning history are completely preserved.
-              </p>
+              <p className="font-medium text-foreground">{t("learnNonDestructiveDeletionGuarantee")}</p>
+              <p>{t("learnDeletingThisCollectionRemovesOnlyTheDeckOrganizationAll")}{" "}
+                <span className="font-medium text-foreground">{itemToDelete?.wordCount || 0}{" "}{t("learnVocabularyWords")}</span>{" "}{t("learnInsideItWillRemainSafeInYourVocabularyLibraryAndYourSpacedRepetitionSRSReviewSchedulesAn")}</p>
             </div>
 
             {deleteError && (
               <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {deleteError}
+                {t(deleteError)}
               </div>
             )}
 
@@ -530,9 +513,7 @@ export default function CollectionsPage() {
                 variant="outline"
                 onClick={() => setItemToDelete(null)}
                 disabled={isDeleting}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button
                 type="button"
                 variant="destructive"
@@ -542,11 +523,9 @@ export default function CollectionsPage() {
               >
                 {isDeleting ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                    Deleting...
-                  </>
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t("learnDeleting")}</>
                 ) : (
-                  "Delete Collection"
+                  t("learnDeleteCollection")
                 )}
               </Button>
             </DialogFooter>

@@ -1,5 +1,10 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import { translate, type TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,8 +39,9 @@ export function QuickAddDialog({
   onOpenChange,
   onSuccess,
 }: QuickAddDialogProps) {
-  const [duplicateWarning, setDuplicateWarning] = React.useState<string | null>(null);
-  const [serverError, setServerError] = React.useState<string | null>(null);
+  const { t, locale } = useLocale();
+  const [duplicateWarning, setDuplicateWarning] = React.useState<{ term: string; pos: string } | null>(null);
+  const [serverError, setServerError] = React.useState<TranslationKey | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [collections, setCollections] = React.useState<CollectionItem[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = React.useState<string>("");
@@ -80,7 +86,7 @@ export function QuickAddDialog({
         if (res.exists && res.existingEntries.length > 0) {
           const first = res.existingEntries[0];
           setDuplicateWarning(
-            `"${first.term}" (${first.partOfSpeech}) is already in your library.`
+            { term: first.term, pos: first.partOfSpeech }
           );
         } else {
           setDuplicateWarning(null);
@@ -142,8 +148,7 @@ export function QuickAddDialog({
         onSuccess(created);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Failed to create vocabulary";
+      const errorMsg = learningErrorKey(err, "learnFailedToCreateVocabulary");
       setServerError(errorMsg);
     } finally {
       setIsSubmitting(false);
@@ -152,16 +157,14 @@ export function QuickAddDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="learning-module max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Quick Add Vocabulary</DialogTitle>
-          <DialogDescription>
-            Add a new word or phrase to your library. Press{" "}
+            <LanguageSwitcher />
+          <DialogTitle>{t("learnQuickAddVocabulary")}</DialogTitle>
+          <DialogDescription>{t("learnAddANewWordOrPhraseToYourLibraryPress")}{" "}
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-mono font-medium text-foreground">
               Mod+Enter
-            </kbd>{" "}
-            to save.
-          </DialogDescription>
+            </kbd>{" "}{t("learnToSave")}</DialogDescription>
         </DialogHeader>
 
         {serverError && (
@@ -170,7 +173,7 @@ export function QuickAddDialog({
             className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-100 p-3 text-sm text-neutral-900"
           >
             <AlertCircle className="h-4 w-4 shrink-0 text-neutral-700" />
-            <span>{serverError}</span>
+            <span>{t(serverError)}</span>
           </div>
         )}
 
@@ -180,84 +183,83 @@ export function QuickAddDialog({
             className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-50 p-2.5 text-xs text-neutral-800"
           >
             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-neutral-600" />
-            <span>Advisory: {duplicateWarning}</span>
+            <span>{t("learnAdvisory")}{" "}{t("learnDuplicateWarning", duplicateWarning)}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="quick-add-term">
-              Word / Phrase <span className="text-neutral-500">*</span>
+            <Label htmlFor="quick-add-term">{t("learnWordPhrase")}{" "}<span className="text-neutral-500">*</span>
             </Label>
             <Input
-              id="quick-add-term"
+              id="quick-add-term" aria-invalid={!!errors.term} aria-describedby={errors.term ? "quick-add-term-error" : undefined}
               autoFocus
               placeholder="e.g. resilience"
               {...register("term")}
               disabled={isSubmitting}
             />
             {errors.term && (
-              <p className="text-xs text-neutral-600 font-medium">{errors.term.message}</p>
+              <p id="quick-add-term-error" role="alert" className="text-xs text-neutral-600 font-medium">{translate(locale, errors.term.message ?? "validationFailed")}</p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-add-pos">
-                Part of Speech <span className="text-neutral-500">*</span>
-              </Label>
-              <select
-                id="quick-add-pos"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                {...register("partOfSpeech")}
-                disabled={isSubmitting}
-              >
-                <option value="noun">Noun</option>
-                <option value="verb">Verb</option>
-                <option value="adjective">Adjective</option>
-                <option value="adverb">Adverb</option>
-                <option value="idiom">Idiom</option>
-                <option value="phrase">Phrase</option>
-                <option value="preposition">Preposition</option>
-                <option value="conjunction">Conjunction</option>
-                <option value="other">Other</option>
-              </select>
-              {errors.partOfSpeech && (
-                <p className="text-xs text-neutral-600 font-medium">{errors.partOfSpeech.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quick-add-ipa">Phonetic (IPA)</Label>
-              <Input
-                id="quick-add-ipa"
-                placeholder="/rɪˈzɪl.jəns/"
-                {...register("phoneticIpa")}
-                disabled={isSubmitting}
-              />
-              {errors.phoneticIpa && (
-                <p className="text-xs text-neutral-600 font-medium">{errors.phoneticIpa.message}</p>
-              )}
-            </div>
-          </div>
-
           <div className="space-y-1.5">
-            <Label htmlFor="quick-add-meaning">
-              Vietnamese Meaning <span className="text-neutral-500">*</span>
+            <Label htmlFor="quick-add-meaning">{t("learnVietnameseMeaning")}{" "}<span className="text-neutral-500">*</span>
             </Label>
             <Input
-              id="quick-add-meaning"
+              id="quick-add-meaning" aria-invalid={!!errors.vietnameseMeaning} aria-describedby={errors.vietnameseMeaning ? "quick-add-meaning-error" : undefined}
               placeholder="khả năng phục hồi, sự kiên cường"
               {...register("vietnameseMeaning")}
               disabled={isSubmitting}
             />
             {errors.vietnameseMeaning && (
-              <p className="text-xs text-neutral-600 font-medium">{errors.vietnameseMeaning.message}</p>
+              <p id="quick-add-meaning-error" role="alert" className="text-xs text-neutral-600 font-medium">{translate(locale, errors.vietnameseMeaning.message ?? "validationFailed")}</p>
             )}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-pos">{t("learnPartOfSpeech")}{" "}<span className="text-neutral-500">*</span>
+              </Label>
+              <select
+                id="quick-add-pos" aria-invalid={!!errors.partOfSpeech} aria-describedby={errors.partOfSpeech ? "quick-add-pos-error" : undefined}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("partOfSpeech")}
+                disabled={isSubmitting}
+              >
+                <option value="noun">{t("learnNoun")}</option>
+                <option value="verb">{t("learnVerb")}</option>
+                <option value="adjective">{t("learnAdjective")}</option>
+                <option value="adverb">{t("learnAdverb")}</option>
+                <option value="idiom">{t("learnIdiom")}</option>
+                <option value="phrase">{t("learnPhrase")}</option>
+                <option value="preposition">{t("learnPreposition")}</option>
+                <option value="conjunction">{t("learnConjunction")}</option>
+                <option value="other">{t("learnOther")}</option>
+              </select>
+              {errors.partOfSpeech && (
+                <p id="quick-add-pos-error" role="alert" className="text-xs text-neutral-600 font-medium">{translate(locale, errors.partOfSpeech.message ?? "validationFailed")}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-add-ipa">{t("learnPhoneticIPA")}</Label>
+              <Input
+                id="quick-add-ipa" aria-invalid={!!errors.phoneticIpa} aria-describedby={errors.phoneticIpa ? "quick-add-ipa-error" : undefined}
+                placeholder="/rɪˈzɪl.jəns/"
+                {...register("phoneticIpa")}
+                disabled={isSubmitting}
+              />
+              {errors.phoneticIpa && (
+                <p id="quick-add-ipa-error" role="alert" className="text-xs text-neutral-600 font-medium">{translate(locale, errors.phoneticIpa.message ?? "validationFailed")}</p>
+              )}
+            </div>
+          </div>
+
+          <details className="space-y-4">
+            <summary className="cursor-pointer rounded text-sm font-medium focus-visible:outline-2">{t("learnOptionalDetails")}</summary>
           <div className="space-y-1.5">
-            <Label htmlFor="quick-add-definition">English Definition</Label>
+            <Label htmlFor="quick-add-definition">{t("learnEnglishDefinition")}</Label>
             <Textarea
               id="quick-add-definition"
               rows={2}
@@ -269,7 +271,7 @@ export function QuickAddDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="quick-add-example">Example Sentence</Label>
+              <Label htmlFor="quick-add-example">{t("learnExampleSentence")}</Label>
               <Textarea
                 id="quick-add-example"
                 rows={2}
@@ -280,26 +282,26 @@ export function QuickAddDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="quick-add-difficulty">CEFR Level</Label>
+              <Label htmlFor="quick-add-difficulty">{t("learnCEFRLevel")}</Label>
               <select
                 id="quick-add-difficulty"
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 {...register("difficultyLevel")}
                 disabled={isSubmitting}
               >
-                <option value="">None / Not set</option>
-                <option value="A1">A1 — Beginner</option>
-                <option value="A2">A2 — Elementary</option>
-                <option value="B1">B1 — Intermediate</option>
-                <option value="B2">B2 — Upper Intermediate</option>
-                <option value="C1">C1 — Advanced</option>
-                <option value="C2">C2 — Proficiency</option>
+                <option value="">{t("learnNoneNotSet")}</option>
+                <option value="A1">{t("learnA1Beginner")}</option>
+                <option value="A2">{t("learnA2Elementary")}</option>
+                <option value="B1">{t("learnB1Intermediate")}</option>
+                <option value="B2">{t("learnB2UpperIntermediate")}</option>
+                <option value="C1">{t("learnC1Advanced")}</option>
+                <option value="C2">{t("learnC2Proficiency")}</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="quick-add-collection">Assign to Collection (Optional)</Label>
+            <Label htmlFor="quick-add-collection">{t("learnAssignToCollectionOptional")}</Label>
             <select
               id="quick-add-collection"
               value={selectedCollectionId}
@@ -307,14 +309,16 @@ export function QuickAddDialog({
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isSubmitting}
             >
-              <option value="">None (Library only)</option>
+              <option value="">{t("learnNoneLibraryOnly")}</option>
               {collections.map((col) => (
                 <option key={col.id} value={col.id}>
-                  {col.title} ({col.wordCount} {col.wordCount === 1 ? "word" : "words"})
+                  {col.title} ({col.wordCount} {col.wordCount === 1 ? t("learnWord") : t("learnWords")})
                 </option>
               ))}
             </select>
           </div>
+
+          </details>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button
@@ -322,17 +326,13 @@ export function QuickAddDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+            >{t("learnCancel")}</Button>
             <Button type="submit" disabled={isSubmitting} className="min-w-28">
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("learnSaving")}</>
               ) : (
-                "Save Word"
+                t("learnSaveWord")
               )}
             </Button>
           </DialogFooter>

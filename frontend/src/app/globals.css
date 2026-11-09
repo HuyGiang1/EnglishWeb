@@ -155,3 +155,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Learning controls must wrap at narrow widths and enlarged text sizes. */
+.learning-module { min-width: 0; overflow-wrap: anywhere; }
+.learning-module :is(button, a, select, input, textarea) { max-width: 100%; }
+.learning-module button { white-space: normal; height: auto; min-height: 2.25rem; }
+.learning-module :is([role="alert"], [role="status"]) { overflow-wrap: anywhere; }
+.learning-module :is(input, select, textarea):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }

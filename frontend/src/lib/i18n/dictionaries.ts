@@ -1,8 +1,10 @@
+import { learningEn, learningVi } from "./learning-dictionaries";
 import { shellEn, shellVi } from "./shell-dictionaries";
 import type { Locale } from "./config";
 
 export const en = {
   ...shellEn,
+  ...learningEn,
   language: "Language",
   localeSaving: "Saving language…",
   localeSaveFailed: "Could not save language. Your last confirmed language was restored. Please try again.",
@@ -48,6 +50,7 @@ type Dictionary = Record<TranslationKey, string>;
 
 export const vi: Dictionary = {
   ...shellVi,
+  ...learningVi,
   language: "Ngôn ngữ",
   localeSaving: "Đang lưu ngôn ngữ…",
   localeSaveFailed: "Không lưu được ngôn ngữ. Đã khôi phục lựa chọn được xác nhận gần nhất. Vui lòng thử lại.",

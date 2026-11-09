@@ -4,8 +4,8 @@ export const vocabularySchema = z.object({
   term: z
     .string()
     .trim()
-    .min(1, "Word or phrase is required")
-    .max(150, "Must be at most 150 characters"),
+    .min(1, "learnWordOrPhraseIsRequired")
+    .max(150, "learnMustBeAtMost150Characters"),
   partOfSpeech: z.enum(
     [
       "noun",
@@ -19,19 +19,19 @@ export const vocabularySchema = z.object({
       "other",
     ],
     {
-      errorMap: () => ({ message: "Please select a valid part of speech" }),
+      errorMap: () => ({ message: "learnPleaseSelectAValidPartOfSpeech" }),
     }
   ),
   phoneticIpa: z
     .string()
     .trim()
-    .max(100, "Phonetic IPA must not exceed 100 characters")
+    .max(100, "learnPhoneticIPAMustNotExceed100Characters")
     .optional()
     .or(z.literal("")),
   vietnameseMeaning: z
     .string()
     .trim()
-    .min(1, "Vietnamese meaning is required"),
+    .min(1, "learnVietnameseMeaningIsRequired"),
   englishDefinition: z.string().trim().optional().or(z.literal("")),
   exampleSentence: z.string().trim().optional().or(z.literal("")),
   exampleTranslation: z.string().trim().optional().or(z.literal("")),

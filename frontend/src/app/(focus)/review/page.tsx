@@ -1,5 +1,9 @@
 "use client";
 
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -21,13 +25,14 @@ interface SessionResultItem {
 }
 
 export default function ReviewFocusPage() {
+  const { t } = useLocale();
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TranslationKey | null>(null);
   const [cards, setCards] = useState<ReviewCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<TranslationKey | null>(null);
 
   // Each card attempt has a stable attempt_id that is preserved on network retries
   const [currentAttemptId, setCurrentAttemptId] = useState<string>("");
@@ -51,7 +56,7 @@ export default function ReviewFocusPage() {
       setSessionResults([]);
       setStartTime(Date.now());
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load review queue";
+      const msg = learningErrorKey(err, "learnFailedToLoadReviewQueue2");
       setError(msg);
     } finally {
       setLoading(false);
@@ -101,7 +106,7 @@ export default function ReviewFocusPage() {
         setLastGradeAttempted(null);
         setStartTime(Date.now());
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Grade submission failed. Please retry.";
+        const msg = learningErrorKey(err, "learnGradeSubmissionFailedPleaseRetry");
         setSubmitError(msg);
       } finally {
         setSubmitting(false);
@@ -125,7 +130,7 @@ export default function ReviewFocusPage() {
       if (
         target &&
         (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
+          target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.tagName === "BUTTON" ||
           target.isContentEditable)
       ) {
         return;
@@ -175,9 +180,9 @@ export default function ReviewFocusPage() {
   // 1. Loading State
   if (loading) {
     return (
-      <div className="w-full flex flex-col items-center justify-center min-h-[380px] gap-4" data-testid="review-loading">
+      <div className="w-full flex flex-col items-center justify-center min-h-[380px] gap-4" data-testid="review-loading" role="status">
         <div className="size-8 rounded-full border-2 border-border border-t-foreground animate-spin" />
-        <p className="text-sm text-muted-foreground font-mono">Loading review queue...</p>
+        <p className="text-sm text-muted-foreground font-mono">{t("learnLoadingReviewQueue")}</p>
       </div>
     );
   }
@@ -190,16 +195,16 @@ export default function ReviewFocusPage() {
           <AlertCircle className="size-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Failed to Load Review Queue</h2>
-          <p className="text-sm text-muted-foreground mt-1">{error}</p>
+          <h1 className="text-lg font-semibold text-foreground">{t("learnFailedToLoadReviewQueue")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t(error)}</p>
         </div>
         <div className="flex items-center gap-3 mt-2">
           <Button onClick={loadQueue} variant="outline" size="sm" className="gap-2">
             <RotateCcw className="size-3.5" />
-            <span>Try Again</span>
+            <span>{t("learnTryAgain")}</span>
           </Button>
           <Link href="/dashboard">
-            <Button variant="ghost" size="sm">Return to Dashboard</Button>
+            <Button variant="ghost" size="sm">{t("learnReturnToDashboard")}</Button>
           </Link>
         </div>
       </Card>
@@ -214,22 +219,18 @@ export default function ReviewFocusPage() {
           <CheckCircle2 className="size-6 text-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">All Caught Up</h2>
-          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-            You have zero flashcards due for review right now. Add new words to your library or check back later.
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{t("learnAllCaughtUp")}</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{t("learnYouHaveZeroFlashcardsDueForReviewRightNowAddNewWordsToYourLibraryOrCheckBackLater")}</p>
         </div>
         <div className="flex items-center gap-3 mt-4">
           <Link href="/vocabulary">
             <Button size="sm" className="gap-2">
               <BookOpen className="size-3.5" />
-              <span>Add Words</span>
+              <span>{t("learnAddWords")}</span>
             </Button>
           </Link>
           <Link href="/dashboard">
-            <Button variant="outline" size="sm">
-              Dashboard
-            </Button>
+            <Button variant="outline" size="sm">{t("learnDashboard")}</Button>
           </Link>
         </div>
       </Card>
@@ -250,43 +251,37 @@ export default function ReviewFocusPage() {
         </div>
 
         <div>
-          <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Session Summary</span>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground mt-1">Review Session Completed</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            You reviewed {sessionResults.length} flashcard{sessionResults.length === 1 ? "" : "s"} today.
-          </p>
+          <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{t("learnSessionSummary")}</span>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground mt-1">{t("learnReviewSessionCompleted")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("learnReviewSummary", { count: sessionResults.length })}</p>
         </div>
 
         {/* Real Outcome Breakdown */}
-        <div className="w-full grid grid-cols-4 gap-2 pt-2 border-t border-border">
+        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border">
           <div className="p-3 rounded-lg border border-border bg-muted/30">
-            <div className="text-xs font-mono text-muted-foreground">Again</div>
+            <div className="text-xs font-mono text-muted-foreground">{t("learnAgain")}</div>
             <div className="text-lg font-bold font-mono text-foreground mt-0.5">{againCount}</div>
           </div>
           <div className="p-3 rounded-lg border border-border bg-muted/30">
-            <div className="text-xs font-mono text-muted-foreground">Hard</div>
+            <div className="text-xs font-mono text-muted-foreground">{t("learnHard")}</div>
             <div className="text-lg font-bold font-mono text-foreground mt-0.5">{hardCount}</div>
           </div>
           <div className="p-3 rounded-lg border border-border bg-muted/30">
-            <div className="text-xs font-mono text-muted-foreground">Good</div>
+            <div className="text-xs font-mono text-muted-foreground">{t("learnGood")}</div>
             <div className="text-lg font-bold font-mono text-foreground mt-0.5">{goodCount}</div>
           </div>
           <div className="p-3 rounded-lg border border-border bg-muted/30">
-            <div className="text-xs font-mono text-muted-foreground">Easy</div>
+            <div className="text-xs font-mono text-muted-foreground">{t("learnEasy")}</div>
             <div className="text-lg font-bold font-mono text-foreground mt-0.5">{easyCount}</div>
           </div>
         </div>
 
         <div className="flex items-center gap-3 pt-2">
           <Link href="/dashboard">
-            <Button size="sm">
-              Return to Workspace
-            </Button>
+            <Button size="sm">{t("learnReturnToWorkspace")}</Button>
           </Link>
           <Link href="/vocabulary">
-            <Button variant="outline" size="sm">
-              Vocabulary Library
-            </Button>
+            <Button variant="outline" size="sm">{t("learnVocabularyLibrary")}</Button>
           </Link>
         </div>
       </Card>
@@ -300,13 +295,12 @@ export default function ReviewFocusPage() {
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-6" data-testid="review-container">
       {/* Session Progress Header */}
       <div className="w-full flex items-center justify-between text-xs text-muted-foreground font-mono">
-        <span data-testid="card-position">
-          Card {currentIndex + 1} of {cards.length}
+        <span data-testid="card-position" role="status" aria-live="polite">{t("learnCard")}{" "}{currentIndex + 1}{" "}{t("learnOf")}{" "}{cards.length}
         </span>
-        <span>{progressPercent}% Complete</span>
+        <span>{progressPercent}{t("learnComplete")}</span>
       </div>
 
-      <div className="w-full bg-muted rounded-full h-1 overflow-hidden" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+      <div className="w-full bg-muted rounded-full h-1 overflow-hidden" role="progressbar" aria-label={t("learnLearningProgress")} aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
         <div
           className="bg-foreground h-full transition-all duration-300 ease-out"
           style={{ width: `${progressPercent}%` }}
@@ -318,7 +312,7 @@ export default function ReviewFocusPage() {
         <div className="w-full p-3.5 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-xs flex items-center justify-between gap-3" data-testid="submit-error">
           <div className="flex items-center gap-2">
             <AlertCircle className="size-4 shrink-0" />
-            <span>{submitError}</span>
+            <span>{t(submitError)}</span>
           </div>
           <Button
             size="sm"
@@ -327,9 +321,7 @@ export default function ReviewFocusPage() {
             disabled={submitting}
             className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
             data-testid="retry-submit-btn"
-          >
-            Retry
-          </Button>
+          >{t("learnRetry")}</Button>
         </div>
       )}
 
@@ -342,11 +334,11 @@ export default function ReviewFocusPage() {
       >
         {/* Term Category Badge */}
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-0.5 text-[11px] font-mono text-muted-foreground mb-4">
-          <span className="capitalize">{currentCard?.partOfSpeech || "vocabulary"}</span>
+          <span className="capitalize">{currentCard?.partOfSpeech || t("navVocabulary")}</span>
           {currentCard?.intervalDays !== undefined && (
             <>
               <span className="text-border">·</span>
-              <span>Interval: {currentCard.intervalDays}d</span>
+              <span>{t("learnInterval")}{" "}{currentCard.intervalDays}{t("learnD")}</span>
             </>
           )}
         </div>
@@ -359,7 +351,7 @@ export default function ReviewFocusPage() {
           <button
             type="button"
             onClick={() => currentCard && speakTerm(currentCard.term)}
-            aria-label="Listen to pronunciation"
+            aria-label={t("learnListenToPronunciation")}
             className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <Volume2 className="size-4" />
@@ -388,7 +380,7 @@ export default function ReviewFocusPage() {
 
             {currentCard?.exampleSentence && (
               <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs sm:text-sm text-muted-foreground max-w-md text-left" data-testid="card-example">
-                <span className="font-mono text-[10px] uppercase text-muted-foreground/80 block mb-1">Example</span>
+                <span className="font-mono text-[10px] uppercase text-muted-foreground/80 block mb-1">{t("learnExample")}</span>
                 <span>{currentCard.exampleSentence}</span>
               </div>
             )}
@@ -401,12 +393,10 @@ export default function ReviewFocusPage() {
               className="gap-2 px-6"
               data-testid="reveal-btn"
             >
-              <span>Reveal Answer</span>
-              <kbd className="hidden sm:inline-block rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 text-[10px] font-mono">
-                Space
-              </kbd>
+              <span>{t("learnRevealAnswer")}</span>
+              <kbd className="hidden sm:inline-block rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 text-[10px] font-mono">{t("learnSpace")}</kbd>
             </Button>
-            <span className="text-[11px] font-mono text-muted-foreground">Press Space or Enter to reveal</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{t("learnPressSpaceOrEnterToReveal")}</span>
           </div>
         )}
       </Card>
@@ -425,12 +415,12 @@ export default function ReviewFocusPage() {
               data-testid="grade-again-btn"
             >
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-xs sm:text-sm text-foreground">Again</span>
+                <span className="font-medium text-xs sm:text-sm text-foreground">{t("learnAgain")}</span>
                 <kbd className="rounded border border-border bg-muted px-1 py-0.2 text-[10px] font-mono text-muted-foreground">
                   1
                 </kbd>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">Reset (1d)</span>
+              <span className="text-[10px] font-mono text-muted-foreground">{t("learnReset1d")}</span>
             </Button>
 
             {/* 2. HARD */}
@@ -443,12 +433,12 @@ export default function ReviewFocusPage() {
               data-testid="grade-hard-btn"
             >
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-xs sm:text-sm text-foreground">Hard</span>
+                <span className="font-medium text-xs sm:text-sm text-foreground">{t("learnHard")}</span>
                 <kbd className="rounded border border-border bg-muted px-1 py-0.2 text-[10px] font-mono text-muted-foreground">
                   2
                 </kbd>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">Difficult</span>
+              <span className="text-[10px] font-mono text-muted-foreground">{t("learnDifficult")}</span>
             </Button>
 
             {/* 3. GOOD */}
@@ -461,12 +451,12 @@ export default function ReviewFocusPage() {
               data-testid="grade-good-btn"
             >
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-xs sm:text-sm text-foreground">Good</span>
+                <span className="font-medium text-xs sm:text-sm text-foreground">{t("learnGood")}</span>
                 <kbd className="rounded border border-border bg-muted px-1 py-0.2 text-[10px] font-mono text-muted-foreground">
                   3
                 </kbd>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">Standard</span>
+              <span className="text-[10px] font-mono text-muted-foreground">{t("learnStandard")}</span>
             </Button>
 
             {/* 4. EASY */}
@@ -479,18 +469,16 @@ export default function ReviewFocusPage() {
               data-testid="grade-easy-btn"
             >
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-xs sm:text-sm text-foreground">Easy</span>
+                <span className="font-medium text-xs sm:text-sm text-foreground">{t("learnEasy")}</span>
                 <kbd className="rounded border border-border bg-muted px-1 py-0.2 text-[10px] font-mono text-muted-foreground">
                   4
                 </kbd>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">Rapid</span>
+              <span className="text-[10px] font-mono text-muted-foreground">{t("learnRapid")}</span>
             </Button>
           </div>
 
-          <p className="text-[11px] font-mono text-muted-foreground text-center">
-            Shortcut keys 1, 2, 3, 4 trigger instant grading.
-          </p>
+          <p className="text-[11px] font-mono text-muted-foreground text-center">{t("learnShortcutKeys1234TriggerInstantGrading")}</p>
         </div>
       )}
 
@@ -499,7 +487,7 @@ export default function ReviewFocusPage() {
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-2 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-3.5" />
-            <span>Exit Focus Review</span>
+            <span>{t("learnExitFocusReview")}</span>
           </Button>
         </Link>
       </div>

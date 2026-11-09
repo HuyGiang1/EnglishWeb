@@ -1,5 +1,10 @@
 "use client";
 
+import { LanguageSwitcher } from "@/components/auth/language-switcher";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import { translate, type TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -42,6 +47,7 @@ import {
 } from "@/lib/vocabulary/vocabulary-schema";
 
 export default function VocabularyDetailPage() {
+  const { t, locale } = useLocale();
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
@@ -52,13 +58,13 @@ export default function VocabularyDetailPage() {
   const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
   const [selectedDeckToAssign, setSelectedDeckToAssign] = React.useState<string>("");
   const [isAssigningDeck, setIsAssigningDeck] = React.useState(false);
-  const [assignError, setAssignError] = React.useState<string | null>(null);
+  const [assignError, setAssignError] = React.useState<TranslationKey | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [loadError, setLoadError] = React.useState<TranslationKey | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saveError, setSaveError] = React.useState<TranslationKey | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -94,7 +100,7 @@ export default function VocabularyDetailPage() {
         difficultyLevel: (data.difficultyLevel as VocabularyFormData["difficultyLevel"]) || "",
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Vocabulary item not found";
+      const msg = learningErrorKey(err, "learnVocabularyItemNotFound");
       setLoadError(msg);
     } finally {
       setIsLoading(false);
@@ -113,7 +119,7 @@ export default function VocabularyDetailPage() {
       const res = await collectionsApi.list({ size: 100 });
       setAllCollections(res.content);
     } catch {
-      setAssignError("Failed to load user collections.");
+      setAssignError("learnFailedToLoadUserCollections");
     }
   };
 
@@ -127,7 +133,7 @@ export default function VocabularyDetailPage() {
       const cols = await collectionsApi.getCollectionsForVocabulary(vocabulary.id);
       setAssignedCollections(cols);
     } catch (err: unknown) {
-      setAssignError(err instanceof Error ? err.message : "Failed to assign to deck");
+      setAssignError(learningErrorKey(err, "learnFailedToAssignToDeck"));
     } finally {
       setIsAssigningDeck(false);
     }
@@ -153,7 +159,7 @@ export default function VocabularyDetailPage() {
         setVocabulary(updated);
         setIsEditing(false);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to update vocabulary";
+        const msg = learningErrorKey(err, "learnFailedToUpdateVocabulary");
         setSaveError(msg);
       } finally {
         setIsSaving(false);
@@ -182,7 +188,7 @@ export default function VocabularyDetailPage() {
       setIsDeleteDialogOpen(false);
       router.push("/vocabulary");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete vocabulary";
+      const msg = learningErrorKey(err, "learnFailedToDeleteVocabulary");
       setSaveError(msg);
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
@@ -191,7 +197,7 @@ export default function VocabularyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="learning-module space-y-6">
         <div className="h-6 w-32 animate-pulse rounded bg-muted" />
         <div className="h-48 w-full animate-pulse rounded-lg border border-border bg-card" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,16 +212,12 @@ export default function VocabularyDetailPage() {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
         <AlertCircle className="mx-auto h-8 w-8 text-neutral-500 mb-3" />
-        <h2 className="text-lg font-semibold text-foreground mb-1">
-          Vocabulary Not Found
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground mb-1">{t("learnVocabularyNotFound")}</h2>
         <p className="text-sm text-muted-foreground mb-6">
-          {loadError || "The requested vocabulary word does not exist or has been removed."}
+          {t(loadError ?? "learnTheRequestedVocabularyWordDoesNotExistOrHasBeenRemoved")}
         </p>
         <Link href="/vocabulary" className={cn(buttonVariants({ variant: "outline" }))}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Library
-        </Link>
+          <ArrowLeft className="mr-2 h-4 w-4" />{t("learnBackToLibrary")}</Link>
       </div>
     );
   }
@@ -224,10 +226,8 @@ export default function VocabularyDetailPage() {
     <div className="space-y-6">
       {/* Navigation & Breadcrumbs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <nav aria-label="Breadcrumb" className="flex items-center text-sm text-muted-foreground">
-          <Link href="/vocabulary" className="hover:text-foreground transition-colors">
-            Vocabulary
-          </Link>
+        <nav aria-label={t("learnBreadcrumb")} className="flex items-center text-sm text-muted-foreground">
+          <Link href="/vocabulary" className="hover:text-foreground transition-colors">{t("learnVocabulary")}</Link>
           <span className="mx-2">/</span>
           <span className="font-medium text-foreground truncate max-w-xs">{vocabulary.term}</span>
         </nav>
@@ -236,18 +236,14 @@ export default function VocabularyDetailPage() {
           {!isEditing ? (
             <>
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                Edit
-              </Button>
+                <Edit2 className="mr-1.5 h-3.5 w-3.5" />{t("learnEdit")}</Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-neutral-700 hover:text-black hover:bg-neutral-100"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete
-              </Button>
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />{t("learnDelete")}</Button>
             </>
           ) : (
             <>
@@ -261,9 +257,7 @@ export default function VocabularyDetailPage() {
                 }}
                 disabled={isSaving}
               >
-                <X className="mr-1.5 h-3.5 w-3.5" />
-                Cancel
-              </Button>
+                <X className="mr-1.5 h-3.5 w-3.5" />{t("learnCancel")}</Button>
               <Button
                 size="sm"
                 onClick={handleSubmit(onSave)}
@@ -271,14 +265,10 @@ export default function VocabularyDetailPage() {
               >
                 {isSaving ? (
                   <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Saving...
-                  </>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{t("learnSaving")}</>
                 ) : (
                   <>
-                    <Save className="mr-1.5 h-3.5 w-3.5" />
-                    Save (Mod+S)
-                  </>
+                    <Save className="mr-1.5 h-3.5 w-3.5" />{t("learnSaveModS")}</>
                 )}
               </Button>
             </>
@@ -292,7 +282,7 @@ export default function VocabularyDetailPage() {
           className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-100 p-3 text-sm text-neutral-900"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-neutral-700" />
-          <span>{saveError}</span>
+          <span>{t(saveError)}</span>
         </div>
       )}
 
@@ -326,7 +316,7 @@ export default function VocabularyDetailPage() {
             </div>
 
             <div className="pt-2 border-t border-border">
-              <p className="text-sm font-medium text-muted-foreground">Vietnamese Meaning</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("learnVietnameseMeaning")}</p>
               <p className="text-lg font-medium text-foreground mt-0.5">
                 {vocabulary.vietnameseMeaning}
               </p>
@@ -334,7 +324,7 @@ export default function VocabularyDetailPage() {
 
             {vocabulary.englishDefinition && (
               <div className="pt-2">
-                <p className="text-sm font-medium text-muted-foreground">English Definition</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("learnEnglishDefinition")}</p>
                 <p className="text-sm text-foreground mt-0.5 leading-relaxed">
                   {vocabulary.englishDefinition}
                 </p>
@@ -345,21 +335,19 @@ export default function VocabularyDetailPage() {
           {/* Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-                Context & Examples
-              </h2>
+              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("learnContextExamples")}</h2>
 
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">Example Sentence</p>
+                  <p className="text-xs text-muted-foreground">{t("learnExampleSentence")}</p>
                   <p className="text-sm text-foreground mt-0.5 italic">
-                    {vocabulary.exampleSentence ? `"${vocabulary.exampleSentence}"` : "None recorded"}
+                    {vocabulary.exampleSentence ? `"${vocabulary.exampleSentence}"` : t("learnNoneRecorded")}
                   </p>
                 </div>
 
                 {vocabulary.exampleTranslation && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Example Translation</p>
+                    <p className="text-xs text-muted-foreground">{t("learnExampleTranslation")}</p>
                     <p className="text-sm text-foreground mt-0.5">
                       {vocabulary.exampleTranslation}
                     </p>
@@ -368,7 +356,7 @@ export default function VocabularyDetailPage() {
 
                 {vocabulary.notes && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Notes</p>
+                    <p className="text-xs text-muted-foreground">{t("learnNotes")}</p>
                     <p className="text-sm text-foreground mt-0.5">{vocabulary.notes}</p>
                   </div>
                 )}
@@ -376,33 +364,29 @@ export default function VocabularyDetailPage() {
             </div>
 
             <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-                Metadata & Learning Status
-              </h2>
+              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("learnMetadataLearningStatus")}</h2>
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between py-1 border-b border-border">
-                  <span className="text-muted-foreground">Added On</span>
+                  <span className="text-muted-foreground">{t("learnAddedOn")}</span>
                   <span className="font-mono text-xs">
-                    {new Date(vocabulary.createdAt).toLocaleDateString()}
+                    {new Date(vocabulary.createdAt).toLocaleDateString(locale)}
                   </span>
                 </div>
 
                 <div className="flex justify-between py-1 border-b border-border">
-                  <span className="text-muted-foreground">Last Updated</span>
+                  <span className="text-muted-foreground">{t("learnLastUpdated")}</span>
                   <span className="font-mono text-xs">
-                    {new Date(vocabulary.updatedAt).toLocaleDateString()}
+                    {new Date(vocabulary.updatedAt).toLocaleDateString(locale)}
                   </span>
                 </div>
 
                 <div className="rounded-md border border-dashed border-border p-3 bg-muted/30">
                   <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span>SRS Flashcard Status</span>
+                    <span>{t("learnSRSFlashcardStatus")}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    State: <strong>NEW</strong> · Spaced repetition review queue active.
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("learnState")}{" "}<strong>{t("learnNEW")}</strong>{" "}{t("learnSpacedRepetitionReviewQueueActive")}</p>
                 </div>
               </div>
             </div>
@@ -411,9 +395,7 @@ export default function VocabularyDetailPage() {
             <div className="rounded-lg border border-border bg-card p-6 space-y-4 md:col-span-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground flex items-center gap-1.5">
-                  <Layers className="h-4 w-4" />
-                  Collection Memberships
-                </h2>
+                  <Layers className="h-4 w-4" />{t("learnCollectionMemberships")}</h2>
                 <Button
                   variant="outline"
                   size="sm"
@@ -421,9 +403,7 @@ export default function VocabularyDetailPage() {
                   onClick={handleOpenAssignModal}
                   id="assign-to-collection-btn"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Assign to Deck
-                </Button>
+                  <Plus className="h-3 w-3 mr-1" />{t("learnAssignToDeck")}</Button>
               </div>
 
               {assignedCollections.length > 0 ? (
@@ -440,30 +420,26 @@ export default function VocabularyDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground pt-1">
-                  This word is not assigned to any custom collections. Assign it to thematic decks to review it in targeted sessions.
-                </p>
+                <p className="text-xs text-muted-foreground pt-1">{t("learnThisWordIsNotAssignedToAnyCustomCollectionsAssignItToThematicDecksToReviewItInTargetedSe")}</p>
               )}
             </div>
           </div>
         </div>
       ) : (
         /* Edit Mode Form */
-        <form onSubmit={handleSubmit(onSave)} className="rounded-lg border border-border bg-card p-6 space-y-6">
+        <form noValidate onSubmit={handleSubmit(onSave)} className="rounded-lg border border-border bg-card p-6 space-y-6">
           <div className="space-y-1.5">
-            <Label htmlFor="edit-term">
-              Word / Phrase <span className="text-neutral-500">*</span>
+            <Label htmlFor="edit-term">{t("learnWordPhrase")}{" "}<span className="text-neutral-500">*</span>
             </Label>
-            <Input id="edit-term" {...register("term")} disabled={isSaving} />
+            <Input id="edit-term" aria-invalid={!!errors.term} aria-describedby={errors.term ? "edit-term-error" : undefined} {...register("term")} disabled={isSaving} />
             {errors.term && (
-              <p className="text-xs text-neutral-600 font-medium">{errors.term.message}</p>
+              <p id="edit-term-error" role="alert" className="text-xs text-neutral-600 font-medium">{translate(locale, errors.term.message ?? "validationFailed")}</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-pos">
-                Part of Speech <span className="text-neutral-500">*</span>
+              <Label htmlFor="edit-pos">{t("learnPartOfSpeech")}{" "}<span className="text-neutral-500">*</span>
               </Label>
               <select
                 id="edit-pos"
@@ -471,32 +447,33 @@ export default function VocabularyDetailPage() {
                 {...register("partOfSpeech")}
                 disabled={isSaving}
               >
-                <option value="noun">Noun</option>
-                <option value="verb">Verb</option>
-                <option value="adjective">Adjective</option>
-                <option value="adverb">Adverb</option>
-                <option value="idiom">Idiom</option>
-                <option value="phrase">Phrase</option>
-                <option value="preposition">Preposition</option>
-                <option value="conjunction">Conjunction</option>
-                <option value="other">Other</option>
+                <option value="noun">{t("learnNoun")}</option>
+                <option value="verb">{t("learnVerb")}</option>
+                <option value="adjective">{t("learnAdjective")}</option>
+                <option value="adverb">{t("learnAdverb")}</option>
+                <option value="idiom">{t("learnIdiom")}</option>
+                <option value="phrase">{t("learnPhrase")}</option>
+                <option value="preposition">{t("learnPreposition")}</option>
+                <option value="conjunction">{t("learnConjunction")}</option>
+                <option value="other">{t("learnOther")}</option>
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-ipa">Phonetic (IPA)</Label>
-              <Input id="edit-ipa" {...register("phoneticIpa")} disabled={isSaving} />
+              <Label htmlFor="edit-ipa">{t("learnPhoneticIPA")}</Label>
+              <Input id="edit-ipa" aria-invalid={!!errors.phoneticIpa} aria-describedby={errors.phoneticIpa ? "edit-ipa-error" : undefined} {...register("phoneticIpa")} disabled={isSaving} />
+              {errors.phoneticIpa && <p id="edit-ipa-error" role="alert" className="text-xs text-muted-foreground">{translate(locale, errors.phoneticIpa.message ?? "validationFailed")}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-difficulty">CEFR Level</Label>
+              <Label htmlFor="edit-difficulty">{t("learnCEFRLevel")}</Label>
               <select
                 id="edit-difficulty"
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 {...register("difficultyLevel")}
                 disabled={isSaving}
               >
-                <option value="">None</option>
+                <option value="">{t("learnNone")}</option>
                 <option value="A1">A1</option>
                 <option value="A2">A2</option>
                 <option value="B1">B1</option>
@@ -508,30 +485,29 @@ export default function VocabularyDetailPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edit-meaning">
-              Vietnamese Meaning <span className="text-neutral-500">*</span>
+            <Label htmlFor="edit-meaning">{t("learnVietnameseMeaning")}{" "}<span className="text-neutral-500">*</span>
             </Label>
-            <Input id="edit-meaning" {...register("vietnameseMeaning")} disabled={isSaving} />
+            <Input id="edit-meaning" aria-invalid={!!errors.vietnameseMeaning} aria-describedby={errors.vietnameseMeaning ? "edit-meaning-error" : undefined} {...register("vietnameseMeaning")} disabled={isSaving} />
             {errors.vietnameseMeaning && (
-              <p className="text-xs text-neutral-600 font-medium">
-                {errors.vietnameseMeaning.message}
+              <p id="edit-meaning-error" role="alert" className="text-xs text-neutral-600 font-medium">
+                {translate(locale, errors.vietnameseMeaning.message ?? "validationFailed")}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edit-definition">English Definition</Label>
+            <Label htmlFor="edit-definition">{t("learnEnglishDefinition")}</Label>
             <Textarea id="edit-definition" rows={2} {...register("englishDefinition")} disabled={isSaving} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-example">Example Sentence</Label>
+              <Label htmlFor="edit-example">{t("learnExampleSentence")}</Label>
               <Textarea id="edit-example" rows={2} {...register("exampleSentence")} disabled={isSaving} />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-example-trans">Example Translation</Label>
+              <Label htmlFor="edit-example-trans">{t("learnExampleTranslation")}</Label>
               <Textarea
                 id="edit-example-trans"
                 rows={2}
@@ -542,7 +518,7 @@ export default function VocabularyDetailPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edit-notes">Notes</Label>
+            <Label htmlFor="edit-notes">{t("learnNotes")}</Label>
             <Textarea id="edit-notes" rows={2} {...register("notes")} disabled={isSaving} />
           </div>
 
@@ -555,17 +531,13 @@ export default function VocabularyDetailPage() {
                 setIsEditing(false);
               }}
               disabled={isSaving}
-            >
-              Cancel
-            </Button>
+            >{t("learnCancel")}</Button>
             <Button type="submit" disabled={isSaving}>
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("learnSaving")}</>
               ) : (
-                "Save Changes"
+                t("learnSaveChanges")
               )}
             </Button>
           </div>
@@ -574,23 +546,18 @@ export default function VocabularyDetailPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="learning-module max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Vocabulary Word?</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete <strong>&quot;{vocabulary.term}&quot;</strong>? This
-              word will be soft-deleted and removed from your active review list. Historical study
-              records remain preserved.
-            </DialogDescription>
+            <LanguageSwitcher />
+            <DialogTitle>{t("learnDeleteVocabularyWord")}</DialogTitle>
+            <DialogDescription>{t("learnAreYouSureYouWantToDelete")}{" "}<strong>&quot;{vocabulary.term}&quot;</strong>{t("learnThisWordWillBeSoftDeletedAndRemovedFromYourActiveReviewListHistoricalStudyRecordsRemainP")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 pt-4">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={isDeleting}
-            >
-              Cancel
-            </Button>
+            >{t("learnCancel")}</Button>
             <Button
               variant="outline"
               className="border-neutral-300 text-neutral-900 hover:bg-neutral-100"
@@ -599,11 +566,9 @@ export default function VocabularyDetailPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("learnDeleting")}</>
               ) : (
-                "Confirm Delete"
+                t("learnConfirmDelete")
               )}
             </Button>
           </DialogFooter>
@@ -612,35 +577,34 @@ export default function VocabularyDetailPage() {
 
       {/* Assign to Deck Dialog */}
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="learning-module sm:max-w-md">
           <div className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Assign to Collection</DialogTitle>
-              <DialogDescription>
-                Assign <span className="font-semibold text-foreground">&quot;{vocabulary?.term}&quot;</span> to a thematic study deck.
-              </DialogDescription>
+            <LanguageSwitcher />
+              <DialogTitle>{t("learnAssignToCollection")}</DialogTitle>
+              <DialogDescription>{t("learnAssign")}{" "}<span className="font-semibold text-foreground">&quot;{vocabulary?.term}&quot;</span>{" "}{t("learnToAThematicStudyDeck")}</DialogDescription>
             </DialogHeader>
 
             {assignError && (
               <div className="rounded border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                {assignError}
+                {t(assignError)}
               </div>
             )}
 
             <div className="space-y-2 py-1">
-              <Label htmlFor="select-deck-to-assign">Choose Collection</Label>
+              <Label htmlFor="select-deck-to-assign">{t("learnChooseCollection")}</Label>
               <select
                 id="select-deck-to-assign"
                 value={selectedDeckToAssign}
                 onChange={(e) => setSelectedDeckToAssign(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">-- Select a collection --</option>
+                <option value="">{t("learnSelectACollection")}</option>
                 {allCollections.map((col) => {
                   const alreadyIn = assignedCollections.some((c) => c.id === col.id);
                   return (
                     <option key={col.id} value={col.id} disabled={alreadyIn}>
-                      {col.title} {alreadyIn ? "(Already added)" : `(${col.wordCount} words)`}
+                      {col.title} {alreadyIn ? t("learnAlreadyAdded") : t("learnWordCount", { count: col.wordCount })}
                     </option>
                   );
                 })}
@@ -653,9 +617,7 @@ export default function VocabularyDetailPage() {
                 size="sm"
                 onClick={() => setIsAssignModalOpen(false)}
                 disabled={isAssigningDeck}
-              >
-                Cancel
-              </Button>
+              >{t("learnCancel")}</Button>
               <Button
                 size="sm"
                 onClick={handleAssignToDeck}
@@ -664,11 +626,9 @@ export default function VocabularyDetailPage() {
               >
                 {isAssigningDeck ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Assigning...
-                  </>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("learnAssigning")}</>
                 ) : (
-                  "Assign to Deck"
+                  t("learnAssignToDeck")
                 )}
               </Button>
             </DialogFooter>

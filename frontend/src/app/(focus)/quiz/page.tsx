@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useLocale } from "@/lib/i18n/locale-provider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { learningErrorKey } from "@/lib/i18n/learning-errors";
+
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   HelpCircle,
@@ -16,6 +20,7 @@ import {
   Send,
   BookOpen,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -31,12 +36,14 @@ import { ApiError } from "@/lib/api/client";
 type PageMode = "DIRECTORY" | "PRACTICE" | "RESULTS";
 
 export default function QuizPage() {
+  const { t, locale } = useLocale();
+  const reviewTrigger = useRef<HTMLButtonElement>(null);
   // Directory state
   const [mode, setMode] = useState<PageMode>("DIRECTORY");
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [history, setHistory] = useState<QuizHistoryItem[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
+  const [listError, setListError] = useState<TranslationKey | null>(null);
 
   // Active Quiz practice state
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
@@ -48,7 +55,7 @@ export default function QuizPage() {
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState<boolean>(false);
-  const [practiceError, setPracticeError] = useState<string | null>(null);
+  const [practiceError, setPracticeError] = useState<TranslationKey | null>(null);
 
   // Review modal state before submitting
   const [showReviewConfirm, setShowReviewConfirm] = useState<boolean>(false);
@@ -69,9 +76,9 @@ export default function QuizPage() {
       setHistory(userHistory);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setListError(err.message || "Failed to load diagnostic quizzes.");
+        setListError(learningErrorKey(err, "learnFailedToLoadDiagnosticQuizzes"));
       } else {
-        setListError("Network connectivity error. Please refresh the page.");
+        setListError("learnNetworkConnectivityErrorPleaseRefreshThePage");
       }
     } finally {
       setIsLoadingList(false);
@@ -112,9 +119,9 @@ export default function QuizPage() {
       setMode("PRACTICE");
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setPracticeError(err.message || "Failed to start quiz attempt.");
+        setPracticeError(learningErrorKey(err, "learnFailedToStartQuizAttempt"));
       } else {
-        setPracticeError("Network error while starting quiz.");
+        setPracticeError("learnNetworkErrorWhileStartingQuiz");
       }
     } finally {
       setIsStartingQuiz(false);
@@ -161,9 +168,9 @@ export default function QuizPage() {
       setMode("RESULTS");
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setPracticeError(err.message || "Quiz evaluation failed. Please retry submission.");
+        setPracticeError(learningErrorKey(err, "learnQuizEvaluationFailedPleaseRetrySubmission"));
       } else {
-        setPracticeError("Network error submitting quiz. Your answers are preserved.");
+        setPracticeError("learnNetworkErrorSubmittingQuizYourAnswersArePreserved");
       }
     } finally {
       setIsSubmittingFinal(false);
@@ -180,9 +187,9 @@ export default function QuizPage() {
       setMode("RESULTS");
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setListError(err.message || "Failed to load past scorecard.");
+        setListError(learningErrorKey(err, "learnFailedToLoadPastScorecard"));
       } else {
-        setListError("Failed to load past scorecard.");
+        setListError("learnFailedToLoadPastScorecard");
       }
     } finally {
       setIsLoadingList(false);
@@ -206,44 +213,34 @@ export default function QuizPage() {
         {/* Header */}
         <div className="space-y-2 border-b border-border pb-6">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              Assessment Engine
-            </span>
-            <Badge variant="outline" className="font-mono text-[10px] bg-muted">
-              Milestone M2
-            </Badge>
+            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{t("learnAssessmentEngine")}</span>
+
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Diagnostic Quizzes
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            Server-evaluated assessments measuring vocabulary recognition, grammar structures, and formal discourse.
-            Completed quizzes record verified daily study telemetry.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("learnDiagnosticQuizzes")}</h1>
+          <p className="text-sm text-muted-foreground max-w-2xl">{t("learnServerEvaluatedAssessmentsMeasuringVocabularyRecognitionGrammarStructuresAndFormalDiscou")}</p>
         </div>
 
+        {!isLoadingList && !listError && quizzes.length === 0 && <p role="status">{t("learnNoQuizzesAvailableYet")}</p>}
         {/* Error Banner */}
         {listError && (
           <div className="p-4 rounded-md border border-destructive/50 bg-destructive/10 text-destructive text-sm flex items-start gap-3">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium">Failed to load quizzes</p>
-              <p className="text-xs mt-1 text-destructive/90">{listError}</p>
+              <p className="font-medium">{t("learnFailedToLoadQuizzes")}</p>
+              <p className="text-xs mt-1 text-destructive/90">{t(listError)}</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={loadDirectory}
                 className="mt-3 text-xs"
-              >
-                Retry Loading
-              </Button>
+              >{t("learnRetryLoading")}</Button>
             </div>
           </div>
         )}
 
         {/* Loading Skeleton */}
         {isLoadingList ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2" role="status" aria-label={t("learnLoading")}>
             {[1, 2].map((i) => (
               <Card key={i} className="p-6 border-border bg-card space-y-4 animate-pulse">
                 <div className="h-4 bg-muted rounded w-1/3" />
@@ -257,9 +254,7 @@ export default function QuizPage() {
           <div className="space-y-8">
             {/* Quiz Catalog */}
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-                Available Assessments
-              </h2>
+              <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("learnAvailableAssessments")}</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {quizzes.map((quiz) => (
                   <Card
@@ -288,19 +283,17 @@ export default function QuizPage() {
                       <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground pt-2 border-t border-border">
                         <span className="flex items-center gap-1.5">
                           <HelpCircle className="w-3.5 h-3.5" />
-                          {quiz.questionCount} Questions
-                        </span>
+                          {quiz.questionCount}{" "}{t("learnQuestions")}</span>
                         <span>·</span>
                         <span>
                           {quiz.attemptCount > 0
-                            ? `${quiz.attemptCount} Attempt${quiz.attemptCount === 1 ? "" : "s"}`
-                            : "Not attempted"}
+                            ? t("learnAttemptCount", { count: quiz.attemptCount })
+                            : t("learnNotAttempted")}
                         </span>
                         {quiz.bestScore !== null && (
                           <>
                             <span>·</span>
-                            <span className="text-foreground font-semibold">
-                              Best: {quiz.bestScore.toFixed(1)}%
+                            <span className="text-foreground font-semibold">{t("learnBest")}{" "}{quiz.bestScore.toFixed(1)}%
                             </span>
                           </>
                         )}
@@ -313,7 +306,7 @@ export default function QuizPage() {
                         onClick={() => handleStartQuiz(quiz.id, quiz.title)}
                         disabled={isStartingQuiz}
                       >
-                        {quiz.attemptCount > 0 ? "Retake Assessment" : "Start Diagnostic Quiz"}
+                        {quiz.attemptCount > 0 ? t("learnRetakeAssessment") : t("learnStartDiagnosticQuiz")}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </div>
@@ -326,11 +319,9 @@ export default function QuizPage() {
             {history.length > 0 && (
               <div className="space-y-4 pt-6 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-                    Attempt History
-                  </h2>
+                  <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("learnAttemptHistory")}</h2>
                   <span className="text-xs font-mono text-muted-foreground">
-                    {history.length} completed attempt{history.length === 1 ? "" : "s"}
+                    {history.length}{" "}{t("learnCompletedAttempt")}{history.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
@@ -351,7 +342,7 @@ export default function QuizPage() {
                         </div>
                         <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px]">
                           <span>
-                            {new Date(item.completedAt).toLocaleDateString(undefined, {
+                            {new Date(item.completedAt).toLocaleDateString(locale, {
                               year: "numeric",
                               month: "short",
                               day: "numeric",
@@ -361,8 +352,7 @@ export default function QuizPage() {
                           </span>
                           <span>·</span>
                           <span>
-                            {item.correctAnswers} / {item.totalQuestions} Correct
-                          </span>
+                            {item.correctAnswers} / {item.totalQuestions}{" "}{t("learnCorrect")}</span>
                         </div>
                       </div>
 
@@ -377,9 +367,7 @@ export default function QuizPage() {
                           size="sm"
                           onClick={() => handleViewHistoricalResult(item)}
                           className="text-xs"
-                        >
-                          Review Scorecard
-                        </Button>
+                        >{t("learnReviewScorecard")}</Button>
                       </div>
                     </div>
                   ))}
@@ -407,34 +395,31 @@ export default function QuizPage() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (window.confirm("Return to catalog? Your answered progress will be preserved for this attempt.")) {
+                if (window.confirm(t("learnExitQuizConfirm"))) {
                   loadDirectory();
                   setMode("DIRECTORY");
                 }
               }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Exit to Catalog
-            </Button>
+              <ArrowLeft className="w-4 h-4 mr-1" />{t("learnExitToCatalog")}</Button>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-muted-foreground">
-                Question {currentQuestionIndex + 1} of {totalCount}
+              <span role="status" aria-live="polite" className="text-xs font-mono text-muted-foreground">{t("learnQuestion")}{" "}{currentQuestionIndex + 1}{" "}{t("learnOf")}{" "}{totalCount}
               </span>
               <Button
                 variant="outline"
                 size="sm"
+                ref={reviewTrigger}
                 onClick={() => setShowReviewConfirm(true)}
                 className="text-xs font-mono h-7"
               >
-                <LayoutList className="w-3.5 h-3.5 mr-1.5" />
-                Review ({answeredCount}/{totalCount})
+                <LayoutList className="w-3.5 h-3.5 mr-1.5" />{t("learnReview")}{answeredCount}/{totalCount})
               </Button>
             </div>
           </div>
 
           {/* Progress Indicator Bar */}
-          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div role="progressbar" aria-label={t("learnLearningProgress")} aria-valuenow={currentQuestionIndex + 1} aria-valuemin={0} aria-valuemax={totalCount} className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-foreground transition-all duration-200"
               style={{
@@ -444,7 +429,7 @@ export default function QuizPage() {
           </div>
 
           {/* Question Dots Navigation */}
-          <div className="flex items-center justify-center gap-1.5 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
             {questions.map((q, idx) => {
               const isAnswered = Boolean(userAnswers[q.questionId]?.trim());
               const isCurrent = idx === currentQuestionIndex;
@@ -460,7 +445,7 @@ export default function QuizPage() {
                       ? "border-border bg-card text-foreground font-medium hover:border-foreground"
                       : "border-dashed border-border bg-muted/40 text-muted-foreground hover:border-border"
                   }`}
-                  aria-label={`Jump to question ${idx + 1}`}
+                  aria-label={t("learnJumpQuestion", { count: idx + 1 })} aria-current={isCurrent ? "step" : undefined}
                 >
                   {idx + 1}
                 </button>
@@ -473,7 +458,7 @@ export default function QuizPage() {
         {practiceError && (
           <div className="p-4 rounded-md border border-destructive/50 bg-destructive/10 text-destructive text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{practiceError}</span>
+            <span>{t(practiceError)}</span>
           </div>
         )}
 
@@ -482,16 +467,15 @@ export default function QuizPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Badge variant="outline" className="font-mono text-[11px]">
-                {currentQuestion.questionType === "CLOZE" ? "Fill in the Blank" : "Multiple Choice"}
+                {currentQuestion.questionType === "CLOZE" ? t("learnFillInTheBlank") : t("learnMultipleChoice")}
               </Badge>
-              <span className="font-mono text-xs text-muted-foreground">
-                Question {currentQuestionIndex + 1}
+              <span className="font-mono text-xs text-muted-foreground">{t("learnQuestion")}{" "}{currentQuestionIndex + 1}
               </span>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-medium text-foreground leading-relaxed">
+            <h1 className="text-lg sm:text-xl font-medium text-foreground leading-relaxed">
               {currentQuestion.prompt}
-            </h2>
+            </h1>
           </div>
 
           {/* Options / Input Area */}
@@ -506,6 +490,7 @@ export default function QuizPage() {
                   return (
                     <button
                       key={optIdx}
+                      aria-pressed={isSelected}
                       type="button"
                       onClick={() => handleSelectAnswer(currentQuestion.questionId, option)}
                       className={`w-full p-4 rounded-lg border text-left transition-colors flex items-center justify-between ${
@@ -534,22 +519,18 @@ export default function QuizPage() {
             ) : (
               // CLOZE (Fill in the Blank)
               <div className="space-y-3">
-                <label className="text-xs font-mono text-muted-foreground block">
-                  Enter your answer:
-                </label>
+                <label htmlFor="quiz-answer" className="text-xs font-mono text-muted-foreground block">{t("learnEnterYourAnswer")}</label>
                 <input
                   type="text"
                   value={selectedAnswer}
                   onChange={(e) =>
                     handleSelectAnswer(currentQuestion.questionId, e.target.value)
                   }
-                  placeholder="Type word or phrase..."
+                  id="quiz-answer" placeholder={t("learnTypeWordOrPhrase")}
                   className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
                   autoFocus
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Case-insensitive; spelling and syntax are strictly verified.
-                </p>
+                <p className="text-[11px] text-muted-foreground">{t("learnCaseInsensitiveSpellingAndSyntaxAreStrictlyVerified")}</p>
               </div>
             )}
           </div>
@@ -563,9 +544,7 @@ export default function QuizPage() {
             disabled={currentQuestionIndex === 0}
             className="text-xs"
           >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            Previous
-          </Button>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />{t("learnPrevious")}</Button>
 
           {currentQuestionIndex < totalCount - 1 ? (
             <Button
@@ -573,17 +552,14 @@ export default function QuizPage() {
                 setCurrentQuestionIndex((prev) => Math.min(totalCount - 1, prev + 1))
               }
               className="text-xs"
-            >
-              Next Question
-              <ArrowRight className="w-4 h-4 ml-1.5" />
+            >{t("learnNextQuestion")}<ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           ) : (
             <Button
-              onClick={() => setShowReviewConfirm(true)}
+              ref={reviewTrigger}
+                onClick={() => setShowReviewConfirm(true)}
               className="text-xs font-semibold bg-foreground text-background hover:bg-foreground/90"
-            >
-              Review & Submit
-              <Send className="w-4 h-4 ml-1.5" />
+            >{t("learnReviewSubmit")}<Send className="w-4 h-4 ml-1.5" />
             </Button>
           )}
         </div>
@@ -591,32 +567,29 @@ export default function QuizPage() {
         {/* ===================================================================
             MODAL: REVIEW BEFORE SUBMIT
            =================================================================== */}
-        {showReviewConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-            <Card className="w-full max-w-md p-6 border-border bg-card shadow-lg space-y-6 animate-in fade-in zoom-in-95 duration-100">
+        <Dialog open={showReviewConfirm} onOpenChange={(open) => { if (!isSubmittingFinal) setShowReviewConfirm(open); }}>
+            <DialogContent finalFocus={reviewTrigger} className="learning-module max-w-md max-h-[90vh] overflow-y-auto space-y-6">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-foreground" />
-                  <h3 className="text-lg font-bold text-foreground">Confirm Submission</h3>
+                  <DialogTitle className="text-lg font-bold text-foreground">{t("learnConfirmSubmission")}</DialogTitle>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Review your completion status before final authoritative server grading.
-                </p>
+                <p className="text-xs text-muted-foreground">{t("learnReviewYourCompletionStatusBeforeFinalAuthoritativeServerGrading")}</p>
               </div>
 
               {/* Status summary */}
               <div className="grid grid-cols-2 gap-3 p-4 rounded-lg border border-border bg-muted/20 font-mono text-xs">
                 <div>
-                  <span className="text-muted-foreground block text-[11px]">Answered</span>
+                  <span className="text-muted-foreground block text-[11px]">{t("learnAnswered")}</span>
                   <span className="text-foreground text-lg font-bold">
                     {answeredCount} / {totalCount}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block text-[11px]">Unanswered</span>
+                  <span className="text-muted-foreground block text-[11px]">{t("learnUnanswered")}</span>
                   <span
                     className={`text-lg font-bold ${
-                      unansweredCount > 0 ? "text-amber-500" : "text-foreground"
+                      unansweredCount > 0 ? "text-foreground" : "text-foreground"
                     }`}
                   >
                     {unansweredCount}
@@ -625,10 +598,10 @@ export default function QuizPage() {
               </div>
 
               {unansweredCount > 0 && (
-                <div className="p-3 rounded border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs space-y-2">
+                <div className="p-3 rounded border border-border bg-muted text-foreground text-xs space-y-2">
                   <div className="flex items-center gap-2 font-medium">
                     <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>Unanswered questions receive 0 points</span>
+                    <span>{t("learnUnansweredQuestionsReceive0Points")}</span>
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     {questions.map((q, idx) => {
@@ -640,9 +613,9 @@ export default function QuizPage() {
                               setCurrentQuestionIndex(idx);
                               setShowReviewConfirm(false);
                             }}
-                            className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[11px] font-mono hover:bg-amber-500/30"
+                            className="px-2 py-0.5 rounded bg-muted text-foreground text-[11px] font-mono hover:bg-muted"
                           >
-                            Q{idx + 1}
+                            {t("learnQuestion")} {idx + 1}
                           </button>
                         );
                       }
@@ -659,20 +632,17 @@ export default function QuizPage() {
                   onClick={() => setShowReviewConfirm(false)}
                   disabled={isSubmittingFinal}
                   className="text-xs"
-                >
-                  Return to Questions
-                </Button>
+                >{t("learnReturnToQuestions")}</Button>
                 <Button
                   onClick={handleConfirmSubmit}
                   disabled={isSubmittingFinal}
                   className="text-xs font-semibold"
                 >
-                  {isSubmittingFinal ? "Grading..." : "Submit Quiz"}
+                  {isSubmittingFinal ? t("learnGrading") : t("learnSubmitQuiz")}
                 </Button>
               </div>
-            </Card>
-          </div>
-        )}
+            </DialogContent>
+          </Dialog>
       </div>
     );
   }
@@ -686,11 +656,9 @@ export default function QuizPage() {
         {/* Results Banner Card */}
         <Card className="p-8 border-border bg-card text-center space-y-6">
           <div className="space-y-2">
-            <Badge variant="outline" className="font-mono text-xs uppercase tracking-wider">
-              Diagnostic Scorecard
-            </Badge>
+            <Badge variant="outline" className="font-mono text-xs uppercase tracking-wider">{t("learnDiagnosticScorecard")}</Badge>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              {results.title || activeQuizTitle || "Assessment Completed"}
+              {results.title || activeQuizTitle || t("learnAssessmentCompleted")}
             </h1>
           </div>
 
@@ -699,27 +667,25 @@ export default function QuizPage() {
             <div className="text-5xl sm:text-6xl font-mono font-bold tracking-tight text-foreground">
               {results.scorePercentage.toFixed(1)}%
             </div>
-            <p className="text-xs font-mono text-muted-foreground mt-2">
-              Server-Evaluated Accuracy Rate
-            </p>
+            <p className="text-xs font-mono text-muted-foreground mt-2">{t("learnServerEvaluatedAccuracyRate")}</p>
           </div>
 
           {/* Breakdown Matrix */}
           <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto p-4 rounded-lg border border-border bg-muted/20 font-mono text-xs">
             <div className="space-y-1">
-              <span className="text-muted-foreground text-[11px] block">Correct</span>
+              <span className="text-muted-foreground text-[11px] block">{t("learnCorrect")}</span>
               <span className="text-foreground text-lg font-bold">
                 {results.correctCount}
               </span>
             </div>
             <div className="space-y-1 border-x border-border">
-              <span className="text-muted-foreground text-[11px] block">Incorrect</span>
+              <span className="text-muted-foreground text-[11px] block">{t("learnIncorrect")}</span>
               <span className="text-foreground text-lg font-bold">
                 {results.incorrectCount}
               </span>
             </div>
             <div className="space-y-1">
-              <span className="text-muted-foreground text-[11px] block">Unanswered</span>
+              <span className="text-muted-foreground text-[11px] block">{t("learnUnanswered")}</span>
               <span className="text-foreground text-lg font-bold">
                 {results.unansweredCount}
               </span>
@@ -730,7 +696,7 @@ export default function QuizPage() {
           {results.verifiedActivityCreated && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-muted/40 text-xs font-mono text-foreground">
               <ShieldCheck className="w-4 h-4 text-foreground" />
-              <span>Verified learning activity logged to Dashboard</span>
+              <span>{t("learnVerifiedLearningActivityLoggedToDashboard")}</span>
             </div>
           )}
 
@@ -743,9 +709,7 @@ export default function QuizPage() {
                 onClick={() => handleStartQuiz(activeQuizId, activeQuizTitle)}
                 className="text-xs"
               >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                Retake Assessment
-              </Button>
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />{t("learnRetakeAssessment")}</Button>
             )}
             <Button
               variant="outline"
@@ -756,13 +720,9 @@ export default function QuizPage() {
               }}
               className="text-xs"
             >
-              <LayoutList className="w-3.5 h-3.5 mr-1.5" />
-              Quiz Catalog
-            </Button>
+              <LayoutList className="w-3.5 h-3.5 mr-1.5" />{t("learnQuizCatalog")}</Button>
             <Link href="/dashboard">
-              <Button size="sm" className="text-xs">
-                View Dashboard
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              <Button size="sm" className="text-xs">{t("learnViewDashboard")}<ArrowRight className="w-3.5 h-3.5 ml-1.5" />
               </Button>
             </Link>
           </div>
@@ -771,12 +731,9 @@ export default function QuizPage() {
         {/* Detailed Question Review List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-              Question-by-Question Review
-            </h2>
+            <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("learnQuestionByQuestionReview")}</h2>
             <span className="text-xs font-mono text-muted-foreground">
-              {results.questions.length} Items
-            </span>
+              {results.questions.length}{" "}{t("learnItems2")}</span>
           </div>
 
           <div className="space-y-4">
@@ -796,11 +753,10 @@ export default function QuizPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-muted-foreground">
-                          Question {idx + 1}
+                        <span className="font-mono text-xs font-semibold text-muted-foreground">{t("learnQuestion")}{" "}{idx + 1}
                         </span>
                         <Badge variant="outline" className="font-mono text-[10px]">
-                          {q.questionType === "CLOZE" ? "Cloze" : "Multiple Choice"}
+                          {q.questionType === "CLOZE" ? t("learnCloze") : t("learnMultipleChoice")}
                         </Badge>
                       </div>
                       <p className="text-base font-medium text-foreground leading-relaxed">
@@ -811,18 +767,12 @@ export default function QuizPage() {
                     <div className="shrink-0 mt-1">
                       {q.isCorrect ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-foreground text-background font-mono text-xs font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Correct
-                        </span>
+                          <CheckCircle2 className="w-3.5 h-3.5" />{t("learnCorrect")}</span>
                       ) : isUnanswered ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-mono text-xs">
-                          Unanswered
-                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-mono text-xs">{t("learnUnanswered")}</span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-foreground font-mono text-xs font-semibold">
-                          <XCircle className="w-3.5 h-3.5" />
-                          Incorrect
-                        </span>
+                          <XCircle className="w-3.5 h-3.5" />{t("learnIncorrect")}</span>
                       )}
                     </div>
                   </div>
@@ -830,7 +780,7 @@ export default function QuizPage() {
                   {/* Answers Comparison */}
                   <div className="grid sm:grid-cols-2 gap-3 p-4 rounded-lg border border-border bg-muted/20 text-xs font-mono">
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-[11px] block">Your Response</span>
+                      <span className="text-muted-foreground text-[11px] block">{t("learnYourResponse")}</span>
                       <span
                         className={`font-semibold ${
                           q.isCorrect
@@ -840,11 +790,11 @@ export default function QuizPage() {
                             : "text-foreground line-through"
                         }`}
                       >
-                        {isUnanswered ? "None (Skipped)" : q.selectedAnswer}
+                        {isUnanswered ? t("learnNoneSkipped") : q.selectedAnswer}
                       </span>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-[11px] block">Canonical Answer</span>
+                      <span className="text-muted-foreground text-[11px] block">{t("learnCanonicalAnswer")}</span>
                       <span className="text-foreground font-bold">{q.canonicalAnswer}</span>
                     </div>
                   </div>
@@ -853,9 +803,7 @@ export default function QuizPage() {
                   {q.explanation && (
                     <div className="p-3.5 rounded border border-border bg-muted/10 text-xs space-y-1">
                       <span className="font-semibold text-foreground flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-foreground" />
-                        Explanation
-                      </span>
+                        <BookOpen className="w-3.5 h-3.5 text-foreground" />{t("learnExplanation")}</span>
                       <p className="text-muted-foreground leading-relaxed pl-5">
                         {q.explanation}
                       </p>
