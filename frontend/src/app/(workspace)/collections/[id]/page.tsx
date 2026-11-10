@@ -385,7 +385,7 @@ export default function CollectionDetailPage() {
                         >
                           {item.term}
                         </Link>
-                        <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                        <span className="text-xs px-2 py-0.5 rounded bg-muted text-foreground font-mono">
                           {item.partOfSpeech}
                         </span>
                         {item.phoneticIpa && (

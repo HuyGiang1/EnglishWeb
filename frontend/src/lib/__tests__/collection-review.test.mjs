@@ -72,6 +72,21 @@ describe("M3-EVO-3A production collection-scoped review", () => {
       const link = await screen.findByRole("link", { name: translate(locale, "learnReviewStudySet") });
       assert.equal(link.getAttribute("href"), "/review?collectionId=" + collectionId);
     });
+    it(locale + ": focused return link keeps native Enter and canvas shortcut still reveals", async () => {
+      setSearchParams({ collectionId });
+      await act(async () => { mount(locale); });
+      await screen.findByTestId("reveal-btn");
+      const link = screen.getByRole("link", { name: translate(locale, "learnBackToStudySet") });
+      link.focus();
+      const event = new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true });
+      fireEvent(link, event);
+      assert.equal(event.defaultPrevented, false, "Review must not cancel native link activation");
+      assert.ok(screen.queryByTestId("revealed-content") === null);
+      assert.equal(link.getAttribute("href"), "/collections/" + collectionId);
+      link.blur();
+      fireEvent.keyDown(window, { key: " ", code: "Space" });
+      assert.ok(screen.getByTestId("revealed-content"));
+    });
     it(locale + ": empty scoped queue keeps context and back navigation", async () => {
       queue = { totalDue: 0, items: [] }; setSearchParams({ collectionId }); mount(locale);
       await screen.findByTestId("review-empty");

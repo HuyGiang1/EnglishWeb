@@ -74,7 +74,7 @@ function DialogHeader({
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col space-y-1.5 text-left", className)}
+      className={cn("flex flex-col space-y-1.5 text-left [&>:first-child]:pr-8", className)}
       {...props}
     />
   )

@@ -708,3 +708,17 @@ Canvas-local keyboard shortcuts leave native controls alone; completion is
 announced/focused and responsive controls preserve readable enlarged text.
 Global/scoped /review remains the rating-based SRS experience. Quiz is diagnostic;
 Dictation and Shadowing are media-content based, with no Collection relationship.
+
+## M3-EVO-3E — Quality gate hardening
+
+The /flashcards route now uses the same middleware login redirect as other
+protected learning pages; backend session/ownership checks remain authoritative.
+Review return links retain native Enter activation. No learning mode, URL,
+persistence contract or scheduling behavior was added or replaced.
+
+Study Set POS text contrast and dialog close/language spacing were corrected.
+The integrated production-browser journey, two-user security checks, import
+result/preview, Flashcard loading/empty/error states and 320–1280px enlarged-text
+layouts are documented with evidence/limits in PROJECT_STATUS.md. This quality
+gate remains pending Technical Lead review and does not approve production audio
+or release readiness.

@@ -600,3 +600,22 @@ subsequent isolated/full reruns passed without changes. This delivery does not
 claim it fixed or caused by import changes. See PROJECT_STATUS.md for fresh
 verification and device/assistive-technology limits. Quiz remains diagnostic;
 Dictation/Shadowing remain media-specific, not Study Set learning modes.
+
+## M3-EVO-3E — Verified accessibility hardening
+
+Review now leaves Enter/other keys on focused links to native navigation, in
+addition to its existing form-control guards. This is a separately reproduced
+anchor defect, not an explanation for the historical vi-VN shortcut-test failure.
+That observation remains unresolved. Session/retry/locale semantics are unchanged.
+
+Study Set POS badges use the existing foreground token to correct the measured
+4.34:1 contrast on muted backgrounds. Dialog headers reserve close-button space
+on their first child, preventing overlap with the language label at enlarged text.
+Native Tab/Escape/focus return and locale draft preservation were verified.
+
+The read-only `frontend/scripts/audit-study-set-accessibility.mjs` uses the
+installed axe-core and an already authenticated local Chrome test tab. It accepts
+explicit local Study Set/CDP URLs, starts no services, submits no forms/grades,
+and checks WCAG rules plus dialog geometry after finite CSS transitions.
+Automated incomplete findings and untested screen-reader/device coverage are
+recorded in PROJECT_STATUS.md; zero axe violations is not WCAG certification.

@@ -165,12 +165,12 @@ function ReviewSession({ collectionId }: { collectionId?: string }) {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept when user is typing in form controls
+      // Preserve native form-control and link keyboard behavior
       const target = e.target as HTMLElement | null;
       if (
         target &&
         (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.tagName === "BUTTON" ||
+          target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.tagName === "BUTTON" || target.tagName === "A" ||
           target.isContentEditable)
       ) {
         return;

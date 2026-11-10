@@ -23,6 +23,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/vocabulary") ||
     pathname.startsWith("/collections") ||
     pathname.startsWith("/review") ||
+    pathname.startsWith("/flashcards") ||
     pathname.startsWith("/dictation") ||
     pathname.startsWith("/shadowing") ||
     pathname.startsWith("/quiz") ||
@@ -43,6 +44,7 @@ export const config = {
     "/vocabulary/:path*",
     "/collections/:path*",
     "/review/:path*",
+    "/flashcards/:path*",
     "/dictation/:path*",
     "/shadowing/:path*",
     "/quiz/:path*",
