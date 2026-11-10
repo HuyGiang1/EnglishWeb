@@ -758,3 +758,127 @@ missing CSRF may receive 403 before the authentication check.
   ```
 * **Validation**: `timezone` must be valid IANA ID; `dailyGoalItems` between 1 and 500.
 * **Response DTO (`200 OK`)**: Updated settings object.
+
+
+## M3-EVO-3C — Paste vocabulary import
+
+The existing CSV/TSV template, multipart preview and `SKIP`/`REJECT`
+confirmation routes and payloads remain compatible. Paste uses additive routes
+under `/api/v1/vocabulary/bulk-import/paste`. All three are authenticated POSTs
+requiring the existing session and synchronized CSRF cookie/header, including
+the read-only preview and validation operations.
+
+### POST /preview
+
+Request: `{text, delimiter?, mapping?, skipHeader, collectionId?}`.
+`text` is required UTF-8 text, at most **2 MiB**; decoded control characters
+other than TAB/CR/LF are rejected. `delimiter` is `AUTO` (default), `TAB`,
+`COLON`, `SEMICOLON`, `COMMA`, or `NONE`.
+AUTO samples up to 20 nonempty records per candidate and suggests the delimiter
+with the most multi-column records; ties produce `AMBIGUOUS_DELIMITER`.
+It is a heuristic, not a guarantee. Clients must allow override and require
+acknowledgement/correction of warnings before confirmation.
+
+Commons CSV handles quoted fields, doubled quotes, embedded separators and
+multiline fields. COLON is deliberately a **two-field dialect**: only the first
+unquoted colon per record separates Term and Meaning; subsequent colons remain
+content (e.g. `approach : phương pháp: cách tiếp cận`). Use TAB, semicolon or
+comma for IPA/POS columns. Blank records are skipped; row numbers identify
+original physical start lines, including headers and multiline records.
+Malformed quoting returns a safe `PARSER_ERROR`, without echoing input.
+
+`mapping` is an ordered list of source-column destinations: `term`,
+`vietnameseMeaning`, `phoneticIpa`, `partOfSpeech`, `ignore`.
+It defaults to those four fields in that order, then ignore. Term must be mapped
+once; repeating any non-ignore destination is `INVALID_MAPPING`. Mapping up to
+16 source columns is supported. Unmapped/ignored source data is retained in
+preview `cells` and warns `UNUSED_COLUMNS`; varying record widths warn
+`RAGGED_ROW`. No data is silently truncated. `skipHeader` skips the first
+nonempty record.
+
+Response 200: `{delimiter, mapping, warnings, rows}`. Each row contains
+`{rowNumber, cells, term, vietnameseMeaning, phoneticIpa, partOfSpeech, excluded,
+status, issues, existingMeaning, existingIpa}`. Statuses: `NEW`, `EXISTING`,
+`ALREADY_PRESENT`, `DUPLICATE_INPUT`, `INVALID`, `EXCLUDED`,
+`AMBIGUOUS_EXISTING`. Existing metadata is returned only from the current
+user's active vocabulary. Preview creates no vocabulary, membership, SRS or
+learning activity.
+
+### POST /validate
+
+Request: `{rows, collectionId?}`, with 1–1,000 rows of
+`{rowNumber, term, vietnameseMeaning, phoneticIpa?, partOfSpeech?, excluded}`.
+Row numbers must be unique positive physical line numbers (at most 2,097,153).
+Response uses the preview envelope with delimiter `EDITED`, empty mapping/cells
+and no source parsing warnings. Clients retain original source cells/warnings.
+No client status, vocabulary ID or duplicate assessment is authoritative.
+
+All active rows reuse the existing import field validator: trimmed Term
+required, maximum 100 UTF-16 code units; trimmed Meaning required, maximum 500;
+optional IPA maximum 100. Meaning is NOT nullable in persistence: term-only
+input is incomplete, never supplied a fabricated definition.
+POS is optional, defaults to `other`; lowercase canonical values are `noun`,
+`verb`, `adjective`, `adverb`, `idiom`, `phrase`, `preposition`,
+`conjunction`, `other`. Existing supported abbreviations normalize to those
+values. The historical parser accepted `pronoun`/`interjection` despite the
+V2 database CHECK: these (including `pron`) now fail validation before writes.
+No migration changes the database allowlist. Manual vocabulary create has its
+existing separate validation limits; paste keeps the established bulk limits.
+
+### POST /confirm
+
+Request: `{rows, collectionId?, conflictPolicy:"PRESERVE_EXISTING"}`.
+Omitted/null collectionId imports into the library only. A supplied destination
+must be a canonical UUID and an owned existing Collection; malformed/blank
+IDs return 400 `INVALID_DESTINATION`, foreign/missing IDs return the same
+404 and never fall back to another Collection or to the library.
+
+Canonical identity is unchanged: current owner + active vocabulary +
+`Vocabulary.normalize(term)` (trim, Locale.ROOT lowercase) + normalized POS.
+Meaning is not identity. First included valid occurrence wins within the batch.
+Excluded rows do not consume that identity.
+New items create one vocabulary and its existing shared SRS state, then optional
+membership. A unique existing item is linked without changing meaning, IPA,
+schedule, review history or activity; an existing library item (no destination)
+or existing destination membership is counted already present. Metadata
+differences warn `PRESERVE_EXISTING`; later repeated identities warn
+`FIRST_ROW_KEPT`. More than one existing active match is
+`AMBIGUOUS_EXISTING`: the server refuses to choose or merge one.
+
+Backend confirmation revalidates the entire batch, ownership and memberships.
+Any active invalid/ambiguous row blocks the whole transaction with 400
+`INVALID_ITEM_DATA`; all-excluded batches are rejected. Unsupported conflict
+policy is 400 `CONFLICT_POLICY_REQUIRED`. Excluded rows are intentionally
+omitted. Constraint/database failures roll back vocabulary, SRS and membership
+together. Error responses use the existing sanitized error envelope.
+
+Response 200:
+`{createdCount, linkedCount, alreadyPresentCount, duplicateCount, excludedCount,
+rejectedCount:0, collectionId}`. Created counts new vocabulary (including its
+destination link if selected); linked counts only newly linked existing
+vocabulary. The five non-rejected counts partition submitted rows.
+There are no partial-success batches or learning events.
+
+### Bounds, concurrency and retry
+
+Maximum 1,000 nonempty data records/rows, 16 columns and 2 MiB raw paste.
+All new JSON routes have a separate **4 MiB request-body cap**, checked before
+JSON decoding including chunked bodies; oversized bodies return 413
+`PAYLOAD_TOO_LARGE`. Clients enforce raw/body limits and surface field/row
+errors without truncation. CSV multipart limits are explicitly 2 MiB per file
+and 3 MiB including multipart overhead, correcting Spring's previous implicit
+1 MiB file default; oversized multipart requests return sanitized 413.
+
+Paste, legacy import and Quick Add share the existing per-user transaction
+advisory lock; vocabulary edit/delete and membership add/remove now participate
+in that same lock. Paste locks the owned destination row before writing.
+Duplicate lookup uses bounded input terms and candidate memberships, not a
+network request per row. Membership PK and tenant composite FKs remain.
+
+A successful retry rechecks current state and does not create another active
+word/membership/SRS through these coordinated application paths. Counts can
+change from created/linked to already present. **No exact response replay,
+attempt ID or exactly-once guarantee is provided.** There is no new canonical
+vocabulary unique index; out-of-band database writes bypass application locks
+and legacy ambiguous identities must be resolved explicitly, without merging
+learning history here. Existing review attempt-id semantics are unchanged.

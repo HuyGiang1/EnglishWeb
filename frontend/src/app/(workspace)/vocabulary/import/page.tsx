@@ -5,6 +5,7 @@ import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { learningErrorKey } from "@/lib/i18n/learning-errors";
 
 import * as React from "react";
+import { ImportWorkspace } from "@/components/vocabulary/import-workspace";
 import Link from "next/link";
 import {
   Upload,
@@ -22,17 +23,22 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { importApi, BulkImportPreviewResponse } from "@/lib/api/import";
-import { collectionsApi, CollectionItem } from "@/lib/api/collections";
 import { ApiError } from "@/lib/api/client";
 
 export default function BulkImportPage() {
+  return <React.Suspense fallback={null}><ImportWorkspace renderFile={(id, blocked, onBusy) =>
+    <LegacyFileImport selectedCollectionId={id} destinationBlocked={blocked} onBusyChange={onBusy} />} /></React.Suspense>;
+}
+
+function LegacyFileImport({ selectedCollectionId, destinationBlocked, onBusyChange }: {
+  selectedCollectionId: string; destinationBlocked: boolean; onBusyChange: (busy: boolean) => void;
+}) {
   const { t } = useLocale();
   // Step: "UPLOAD" | "PREVIEW" | "SUCCESS"
   const [step, setStep] = React.useState<"UPLOAD" | "PREVIEW" | "SUCCESS">("UPLOAD");
 
   // Collections for optional target selection
-  const [collections, setCollections] = React.useState<CollectionItem[]>([]);
-  const [selectedCollectionId, setSelectedCollectionId] = React.useState<string>("");
+
   const [duplicatePolicy, setDuplicatePolicy] = React.useState<"SKIP" | "REJECT">("SKIP");
 
   // Upload & File State
@@ -57,14 +63,7 @@ export default function BulkImportPage() {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Load collections on mount
-  React.useEffect(() => {
-    collectionsApi.list({ size: 100 })
-      .then((res) => setCollections(res.content))
-      .catch(() => {
-        // Non-blocking: collection selector is optional
-      });
-  }, []);
+  React.useEffect(() => { onBusyChange(isPreviewLoading || isConfirming); }, [isPreviewLoading, isConfirming, onBusyChange]);
 
   // Handle file drop
   const handleDrop = (e: React.DragEvent) => {
@@ -120,7 +119,7 @@ export default function BulkImportPage() {
   };
 
   const handleConfirmImport = async () => {
-    if (!previewData || isConfirming) return;
+    if (!previewData || isConfirming || destinationBlocked) return;
 
     // Filter out structurally invalid rows; valid and duplicate rows are sent to backend for duplicatePolicy enforcement
     const itemsToImport = previewData.previewRows
@@ -338,25 +337,6 @@ export default function BulkImportPage() {
                 <CardDescription className="text-xs">{t("learnConfigureTargetDestinationAndConflictHandling")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
-                {/* Collection selector */}
-                <div className="space-y-1.5">
-                  <label htmlFor="target-collection" className="font-medium text-foreground block">{t("learnAssignToCollectionOptional")}</label>
-                  <select
-                    id="target-collection"
-                    value={selectedCollectionId}
-                    onChange={(e) => setSelectedCollectionId(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    data-testid="collection-select"
-                  >
-                    <option value="">{t("learnNoCollectionLibraryOnly")}</option>
-                    {collections.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title} ({c.wordCount || 0}{" "}{t("learnWords2")}</option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-muted-foreground">{t("learnImportedWordsWillBeAutomaticallyAddedToThisDeck")}</p>
-                </div>
-
                 {/* Duplicate Policy */}
                 <div className="space-y-1.5 pt-2 border-t border-border">
                   <span className="font-medium text-foreground block">{t("learnDuplicateHandlingPolicy")}</span>
@@ -489,7 +469,7 @@ export default function BulkImportPage() {
               <Button
                 size="sm"
                 onClick={handleConfirmImport}
-                disabled={isConfirming || previewData.validRows === 0}
+                disabled={destinationBlocked || isConfirming || previewData.validRows === 0}
                 className="text-xs"
                 data-testid="confirm-import-button"
               >

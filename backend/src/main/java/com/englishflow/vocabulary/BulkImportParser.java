@@ -27,7 +27,7 @@ public class BulkImportParser {
 
     public static final Set<String> VALID_PARTS_OF_SPEECH = Set.of(
         "noun", "verb", "adjective", "adverb", "preposition",
-        "conjunction", "interjection", "pronoun", "phrase", "idiom", "other"
+        "conjunction", "phrase", "idiom", "other"
     );
 
     public static final Map<String, String> POS_ABBREVIATIONS = Map.of(

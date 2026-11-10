@@ -13,6 +13,11 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
 
     Optional<Collection> findByIdAndUserId(UUID id, UUID userId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT c FROM Collection c WHERE c.id = :id AND c.userId = :userId")
+    Optional<Collection> findByIdAndUserIdForUpdate(@org.springframework.data.repository.query.Param("id") UUID id,
+        @org.springframework.data.repository.query.Param("userId") UUID userId);
+
     Page<Collection> findByUserId(UUID userId, Pageable pageable);
 
     boolean existsByUserIdAndTitleIgnoreCase(UUID userId, String title);

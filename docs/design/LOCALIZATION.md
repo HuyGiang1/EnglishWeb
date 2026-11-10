@@ -541,3 +541,34 @@ Production-component tests cover both locales, CRUD, scoped lists, Unfiled,
 movement, paged destinations, invalid destinations, failure fallback and draft
 preservation. Browser evidence and remaining device/assistive-technology limits
 are recorded in the M3-EVO-3B delivery report.
+
+
+## M3-EVO-3C — Paste import
+
+The existing import workspace has localized file/paste mode buttons, exact
+Study Set/library destination selector, raw text and delimiter controls, mapping,
+per-row editing/exclusion/status, parse warnings, preserve-existing policy,
+validation/retry and persistence counts in typed vi-VN/en dictionaries.
+Learning text, original source cells, meanings, IPA and canonical stored POS
+codes are never translated or generated. Term and Meaning are required;
+optional POS defaults to other. Labels explain accepted POS values.
+
+Locale changes retain raw text, delimiter/mapping/header choice, edits,
+exclusions, acknowledgement state and destination. Source/mapping changes
+invalidate the old preview; row/destination edits require backend revalidation.
+Recoverable failures keep drafts and use stable error codes with localized safe
+messages. Raw server errors are not rendered. File/paste switching keeps
+mounted drafts. A route scope change intentionally starts a new workspace.
+
+Inputs have linked labels, native keyboard controls and focus visibility;
+warnings/errors use announcements. Row cards paginate at 25 to bound rendering.
+Confirmation requires policy acknowledgement, warning acknowledgement where
+applicable, at least one included row and a current valid backend assessment.
+Preview never displays a persistence success; only confirmed results show
+created/linked/already-present/duplicate/excluded counts and exact return link.
+
+Production-component regression covers both locales, edits and invalidation,
+mapping, ambiguity, exclusion, duplicate metadata, destination failure without
+silent fallback, retry, text escaping, accessible labels and file mode
+preservation. Real-browser and remaining physical-device/assistive-technology
+limitations are recorded in the M3-EVO-3C delivery evidence.

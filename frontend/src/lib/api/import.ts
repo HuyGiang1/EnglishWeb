@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 
 export interface BulkImportRowError {
   rowNumber: number;
@@ -96,4 +96,35 @@ export const importApi = {
 
     return res.blob();
   },
+};
+
+export type PasteField = "term" | "vietnameseMeaning" | "phoneticIpa" | "partOfSpeech" | "ignore";
+export interface PasteRow {
+  rowNumber: number; term: string; vietnameseMeaning: string; phoneticIpa: string;
+  partOfSpeech: string; excluded: boolean;
+}
+export interface PastePreviewRow extends PasteRow {
+  cells: string[]; status: string; issues: string[]; existingMeaning?: string | null; existingIpa?: string | null;
+}
+export interface PastePreview {
+  delimiter: string; mapping: PasteField[]; warnings: string[]; rows: PastePreviewRow[];
+}
+export interface PasteResult {
+  createdCount: number; linkedCount: number; alreadyPresentCount: number;
+  duplicateCount: number; excludedCount: number; rejectedCount: number; collectionId?: string | null;
+}
+export const PASTE_TEXT_BYTES = 2 * 1024 * 1024;
+export const PASTE_REQUEST_BYTES = 4 * 1024 * 1024;
+export const PASTE_MAX_ROWS = 1000;
+async function pastePost<T>(route: string, payload: unknown): Promise<T> {
+  if (new TextEncoder().encode(JSON.stringify(payload)).length > PASTE_REQUEST_BYTES)
+    throw new ApiError(413, "Import request exceeds 4 MiB.", "PAYLOAD_TOO_LARGE");
+  return apiClient.post<T>("/api/v1/vocabulary/bulk-import/paste/" + route, payload);
+}
+export const pasteImportApi = {
+  preview: (payload: { text: string; delimiter: string; mapping: PasteField[] | null; skipHeader: boolean; collectionId?: string }) =>
+    pastePost<PastePreview>("preview", payload),
+  validate: (payload: { rows: PasteRow[]; collectionId?: string }) => pastePost<PastePreview>("validate", payload),
+  confirm: (payload: { rows: PasteRow[]; collectionId?: string; conflictPolicy: "PRESERVE_EXISTING" }) =>
+    pastePost<PasteResult>("confirm", payload),
 };

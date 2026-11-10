@@ -26,6 +26,9 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, UUID> {
         String partOfSpeech
     );
 
+    @Query("SELECT v FROM Vocabulary v WHERE v.userId = :userId AND v.deletedAt IS NULL AND v.normalizedTerm IN :terms")
+    List<Vocabulary> findActiveByTerms(@Param("userId") UUID userId, @Param("terms") List<String> terms);
+
     long countByUserIdAndDeletedAtIsNull(UUID userId);
 
     @Query("""

@@ -26,6 +26,12 @@ import java.util.Set;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleImportUploadLimit() {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
+            ApiErrorResponse.of("FILE_TOO_LARGE", "Upload exceeds the configured size limit.", 413));
+    }
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private static final Set<String> SENSITIVE_FIELDS = Set.of(

@@ -5,6 +5,11 @@ spring:
   profiles:
     active: dev
 
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+
   web:
     resources:
       add-mappings: false

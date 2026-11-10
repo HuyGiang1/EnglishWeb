@@ -130,6 +130,7 @@ public class VocabularyService {
 
     @Transactional
     public VocabularyResponse updateVocabulary(UUID userId, UUID vocabularyId, UpdateVocabularyRequest request) {
+        userVocabularyLockCoordinator.acquireUserVocabularyLock(userId);
         Vocabulary vocabulary = vocabularyRepository.findByIdAndUserIdAndDeletedAtIsNull(vocabularyId, userId)
             .orElseThrow(() -> new VocabularyNotFoundException("Vocabulary entry not found with id: " + vocabularyId));
 
@@ -164,6 +165,7 @@ public class VocabularyService {
 
     @Transactional
     public void deleteVocabulary(UUID userId, UUID vocabularyId) {
+        userVocabularyLockCoordinator.acquireUserVocabularyLock(userId);
         Vocabulary vocabulary = vocabularyRepository.findByIdAndUserIdAndDeletedAtIsNull(vocabularyId, userId)
             .orElseThrow(() -> new VocabularyNotFoundException("Vocabulary entry not found with id: " + vocabularyId));
 

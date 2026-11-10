@@ -655,3 +655,28 @@ the current Study Set page and is labeled accordingly. A Folder request failure
 does not hide the independent All Study Sets list. Empty/loading/error/success
 states are localized and announced. Existing detail URLs and the scoped Review
 entry point are unchanged. This delivery does not add nested Folders or import.
+
+
+## M3-EVO-3C — Existing Vocabulary Import workspace
+
+`/vocabulary/import` retains CSV/TSV mode by default and adds Paste mode.
+Study Set detail links to
+`/vocabulary/import?collectionId=<exact-id>&mode=paste`. The paged destination
+selector verifies that exact owned set, including destinations outside the
+current list page. An unavailable set blocks import and offers retry or an
+explicit library-only choice; another set is never selected automatically.
+
+Paste has inline sections for source text, delimiter/header, source-column
+mapping and editable preview. Each row displays physical source line, fields,
+validation/duplicate state, original cells and include/exclude control.
+Ignored/ragged/ambiguous source warnings require acknowledgement; editing
+requires backend revalidation before import. Canonical conflicts preserve
+existing definitions and learning progress under explicit policy; ambiguous
+existing identities block confirmation. Cancel discards the in-memory paste
+draft without saving. Result shows distinct persistence/skip/exclusion counts
+and destination navigation. Failed requests retain editable drafts.
+
+The monochrome card layout wraps controls on narrow screens, paginates 25
+preview rows and preserves vi/en selection and drafts. Existing file workflow,
+Folder management and Review routes remain available. No Folder is created
+as part of import.

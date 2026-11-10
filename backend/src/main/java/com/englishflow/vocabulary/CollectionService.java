@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class CollectionService {
 
+    private final UserVocabularyLockCoordinator vocabularyLocks;
     private final FolderService folderService;
     private final CollectionRepository collectionRepository;
     private final VocabularyCollectionRepository vocabularyCollectionRepository;
@@ -36,8 +37,10 @@ public class CollectionService {
         CollectionRepository collectionRepository,
         VocabularyCollectionRepository vocabularyCollectionRepository,
         VocabularyRepository vocabularyRepository,
-        FolderService folderService
+        FolderService folderService,
+        UserVocabularyLockCoordinator vocabularyLocks
     ) {
+        this.vocabularyLocks = vocabularyLocks;
         this.folderService = folderService;
         this.collectionRepository = collectionRepository;
         this.vocabularyCollectionRepository = vocabularyCollectionRepository;
@@ -173,6 +176,7 @@ public class CollectionService {
         UUID collectionId,
         AssignVocabularyRequest request
     ) {
+        vocabularyLocks.acquireUserVocabularyLock(userId);
         Collection collection = collectionRepository.findByIdAndUserId(collectionId, userId)
             .orElseThrow(() -> new CollectionNotFoundException("Collection not found: " + collectionId));
 
@@ -203,6 +207,7 @@ public class CollectionService {
     @Transactional
     public void removeVocabularyFromCollection(UUID userId, UUID collectionId, UUID vocabularyId) {
         // Enforce collection ownership
+        vocabularyLocks.acquireUserVocabularyLock(userId);
         Collection collection = collectionRepository.findByIdAndUserId(collectionId, userId)
             .orElseThrow(() -> new CollectionNotFoundException("Collection not found: " + collectionId));
 

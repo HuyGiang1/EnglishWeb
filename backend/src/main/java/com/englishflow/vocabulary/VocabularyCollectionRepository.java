@@ -15,6 +15,9 @@ import java.util.UUID;
 @Repository
 public interface VocabularyCollectionRepository extends JpaRepository<VocabularyCollection, VocabularyCollectionId> {
 
+    @Query("SELECT vc.vocabularyId FROM VocabularyCollection vc WHERE vc.collectionId = :collectionId AND vc.userId = :userId AND vc.vocabularyId IN :ids")
+    List<UUID> findVocabularyIdsByCollectionAndUser(@Param("collectionId") UUID collectionId, @Param("userId") UUID userId, @Param("ids") List<UUID> ids);
+
     boolean existsByCollectionIdAndVocabularyId(UUID collectionId, UUID vocabularyId);
 
     Optional<VocabularyCollection> findByCollectionIdAndVocabularyIdAndUserId(UUID collectionId, UUID vocabularyId, UUID userId);
