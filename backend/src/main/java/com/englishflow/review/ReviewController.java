@@ -52,6 +52,14 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/due-count")
+    public com.englishflow.review.dto.ReviewDueCountResponse getDueCount(
+        @RequestParam(name = "collectionId", required = false) String collectionId,
+        Authentication authentication
+    ) {
+        return reviewService.getDueCount(getAuthenticatedUserId(authentication), parseCollectionId(collectionId));
+    }
+
     private UUID parseCollectionId(String value) {
         if (value == null) return null;
         try {

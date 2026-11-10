@@ -572,3 +572,31 @@ mapping, ambiguity, exclusion, duplicate metadata, destination failure without
 silent fallback, retry, text escaping, accessible labels and file mode
 preservation. Real-browser and remaining physical-device/assistive-technology
 limitations are recorded in the M3-EVO-3C delivery evidence.
+
+
+## M3-EVO-3D — Study Set learning
+
+Typed vi-VN/en copy adds Total Vocabulary, Due Vocabulary, learning actions,
+read-only practice explanations, safe errors and retry. Original Folder/Study
+Set names, terms, IPA, meanings and examples are never translated. Existing
+management/import controls remain. The synthetic per-row NEW badge is removed;
+no mastery percentage or learned count is shown.
+
+The scoped /flashcards page reuses Focus shell, UI primitives and Collection
+reads without Review grading side effects. It supports reveal/hide, previous/
+next, position, finite batch completion, restart, explicit refresh and next batch
+(up to 50 cards). Locale changes preserve current card, order, position and
+reveal without remount/refetch. Practice is memory-only and earns no activity.
+
+Only the focusable canvas owns Space/Enter (reveal/hide) and Left/Right
+(navigation). Descendant controls, language select, inputs, textarea, editable
+content, prevented/repeated/modified events and global window events do not
+activate those shortcuts. Native controls retain keyboard behavior. Completion
+is announced and focused; layouts wrap at narrow widths/enlarged text and add
+no animation. Existing Review handler, attempt IDs and retry semantics remain.
+
+The previous one-time vi-VN Review shortcut-test failure remains unexplained;
+subsequent isolated/full reruns passed without changes. This delivery does not
+claim it fixed or caused by import changes. See PROJECT_STATUS.md for fresh
+verification and device/assistive-technology limits. Quiz remains diagnostic;
+Dictation/Shadowing remain media-specific, not Study Set learning modes.

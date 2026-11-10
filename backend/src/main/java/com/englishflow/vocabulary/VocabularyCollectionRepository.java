@@ -44,8 +44,9 @@ public interface VocabularyCollectionRepository extends JpaRepository<Vocabulary
         JOIN VocabularyCollection vc ON vc.vocabularyId = v.id
         WHERE vc.collectionId = :collectionId
           AND vc.userId = :userId
+          AND v.userId = :userId
           AND v.deletedAt IS NULL
-        ORDER BY vc.addedAt DESC
+        ORDER BY vc.addedAt DESC, v.id ASC
     """)
     Page<Vocabulary> findVocabulariesByCollectionId(
         @Param("collectionId") UUID collectionId,

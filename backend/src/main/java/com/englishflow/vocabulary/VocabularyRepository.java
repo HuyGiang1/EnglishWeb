@@ -87,4 +87,17 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, UUID> {
           )
     """)
     long countUnprovisionedVocabularies(@Param("userId") UUID userId);
+
+    @Query("""
+        SELECT COUNT(v) FROM Vocabulary v
+        JOIN VocabularyCollection vc ON vc.vocabularyId = v.id AND vc.userId = v.userId
+        WHERE v.userId = :userId AND vc.collectionId = :collectionId
+          AND v.deletedAt IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM com.englishflow.review.SrsItem s
+              WHERE s.userId = :userId AND s.vocabularyId = v.id
+          )
+    """)
+    long countUnprovisionedVocabulariesInCollection(@Param("userId") UUID userId,
+        @Param("collectionId") UUID collectionId);
 }

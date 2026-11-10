@@ -68,9 +68,21 @@ public class ReviewService {
     }
 
     /**
-     * Fetch due cards queue for the authenticated user based on their current local date.
-     * Automatically and idempotently provisions any unprovisioned active vocabulary entries.
+     * Count eligible cards and missing schedules without provisioning or grading.
      */
+    @Transactional(readOnly = true)
+    public com.englishflow.review.dto.ReviewDueCountResponse getDueCount(UUID userId, UUID collectionId) {
+        if (collectionId != null) collectionService.getCollection(userId, collectionId);
+        LocalDate today = LocalDate.now(clock.withZone(resolveUserZone(userId)));
+        long due = collectionId == null
+            ? srsItemRepository.countDueCards(userId, today)
+            : srsItemRepository.countDueCardsInCollection(userId, collectionId, today);
+        long missing = collectionId == null
+            ? vocabularyRepository.countUnprovisionedVocabularies(userId)
+            : vocabularyRepository.countUnprovisionedVocabulariesInCollection(userId, collectionId);
+        return new com.englishflow.review.dto.ReviewDueCountResponse(due + missing);
+    }
+
     @Transactional
     public ReviewQueueResponse getDueQueue(UUID userId, Integer limit) {
         return getDueQueue(userId, null, limit);

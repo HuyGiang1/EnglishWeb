@@ -680,3 +680,31 @@ The monochrome card layout wraps controls on narrow screens, paginates 25
 preview rows and preserves vi/en selection and drafts. Existing file workflow,
 Folder management and Review routes remain available. No Folder is created
 as part of import.
+
+
+## M3-EVO-3D — Study Set learning space and practice
+
+/collections/[id] places a learning section between Study Set metadata/management
+and its vocabulary list. Total Vocabulary counts active membership. Due Vocabulary
+uses the account-local Review rules, including unprovisioned first-review words
+without creating schedules. Counts are load snapshots, not mastery. Failed counts
+show an unavailable value/retry and do not hide vocabulary management.
+
+Actions open /flashcards?collectionId=<exact-id> and the existing scoped /review.
+Import/add/edit/delete and Folder organization remain accessible. The old synthetic
+per-row NEW badge is removed. No Quiz/Dictation/Shadowing scoped menu is invented.
+
+The new Focus-shell Flashcard page loads one batch of at most 50 active member
+words. Reveal/hide, previous/next, position, finite batch end, restart, next batch
+and back navigation do not grade or write learning state. Restart retains the
+batch; explicit refresh starts from page 0 using current membership. Next-batch
+live offset reads may shift under concurrent edits; this is not a whole-set
+snapshot. Locale changes retain card/order/position/reveal. Full navigation or
+reload ends the memory-only session. No shuffle or persisted session is added.
+
+Loading, empty, inaccessible/deleted scope, retry and completion are localized.
+Invalid/missing practice scope asks for a Study Set without global fallback.
+Canvas-local keyboard shortcuts leave native controls alone; completion is
+announced/focused and responsive controls preserve readable enlarged text.
+Global/scoped /review remains the rating-based SRS experience. Quiz is diagnostic;
+Dictation and Shadowing are media-content based, with no Collection relationship.

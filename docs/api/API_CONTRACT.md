@@ -882,3 +882,46 @@ attempt ID or exactly-once guarantee is provided.** There is no new canonical
 vocabulary unique index; out-of-band database writes bypass application locks
 and legacy ambiguous identities must be resolved explicitly, without merging
 learning history here. Existing review attempt-id semantics are unchanged.
+
+
+## M3-EVO-3D — Study Set learning reads
+
+### GET /api/v1/review/due-count
+
+Authenticated, read-only counterpart to the existing Review queue; /reviews
+alias also applies. Optional collectionId uses the existing queue parser:
+omitted means global; canonical UUID means owned Collection; blank/malformed
+returns 400; foreign/missing/deleted Collection returns 404. Response 200:
+`{"totalDue": 12}`.
+
+Count active non-suspended SRS cards due on/before the account's local date,
+plus active vocabulary without a schedule (eligible for first review). Timezone
+resolution matches Review with UTC fallback. Scoped counts require current
+membership. Future-due, suspended and soft-deleted items are excluded. This GET
+never provisions SRS, grades cards or writes history/activity. Counts reflect
+read time and can change after grading or membership changes. The existing
+GET /review/queue still provisions missing schedules when Review is entered;
+its submission, retry/replay and scheduling contracts are unchanged.
+
+### Existing Collection vocabulary retrieval and practice
+
+GET /collections/{id}/vocabularies remains authenticated and read-only, with
+existing page/size bounds (size 1–100, page at least 0). Stable ordering is
+membership addedAt DESC, vocabulary id ASC. Both membership and vocabulary
+are owner-filtered; soft-deleted entries are excluded. No migration or new
+Flashcard persistence API is introduced. The legacy DTO's default srsStatus
+is not an authoritative per-card progress read; Study Set UI removes that NEW
+badge and uses wordCount plus due-count instead. No mastery is inferred.
+
+/flashcards?collectionId=<id> reads Collection metadata and at most 50 words
+per batch. It never requests the Review queue or submits grades. Each batch
+is an in-memory snapshot; restart reuses it. Refresh restarts from page 0;
+next batch uses live offset pagination, so concurrent membership changes can
+shift pages. No whole-set snapshot/completion is promised. Locale switching
+preserves card/order/position/reveal; changing cards hides the answer. Full
+navigation/reload loses practice state. There is no localStorage persistence
+or learning credit. Invalid/absent practice scope asks the user to choose a
+Study Set, without global fallback. Global /review remains unchanged.
+
+Quiz remains diagnostic-question based; Dictation/Shadowing remain media-content
+based. None is represented as Study Set-scoped without a real data relationship.

@@ -32,6 +32,7 @@ export function fixtureApi() {
     else if (/\/collections\/[^/]+$/.test(path)) body = { ...collection, ...payload };
     else if (path.endsWith("/vocabulary")) { if (method === "POST") { vocabulary.push({ ...word, ...payload }); body = vocabulary.at(-1); } else body = page(vocabulary); }
     else if (/\/vocabulary\/[^/]+$/.test(path)) body = { ...word, ...payload };
+    else if (path.endsWith("/review/due-count")) body = { totalDue: 1 };
     else if (path.endsWith("/review/queue")) body = { totalDue: 1, items: [{ ...word, vocabularyId: word.id, srsItemId: "srs-id", intervalDays: 3, easeFactor: 2.5 }] };
     else if (path.endsWith("/review/grade")) body = { ...payload, newIntervalDays: 6, newEaseFactor: 2.5, dueDate: "2026-11-15", nextReviewLabel: "in 6 days" };
     else if (path.endsWith("/dictation")) body = [lesson];

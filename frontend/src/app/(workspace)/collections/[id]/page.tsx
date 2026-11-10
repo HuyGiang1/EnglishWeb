@@ -1,5 +1,6 @@
 "use client";
 
+import { StudySetLearning } from "@/components/learning/study-set-learning";
 import { LanguageSwitcher } from "@/components/auth/language-switcher";
 import { useLocale } from "@/lib/i18n/locale-provider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
@@ -311,7 +312,6 @@ export default function CollectionDetailPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               <Link className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring" href={"/vocabulary/import?collectionId=" + encodeURIComponent(collectionId) + "&mode=paste"}>{t("learnImportVocabulary")}</Link>
-              <Link className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring" href={`/review?collectionId=${encodeURIComponent(collectionId)}`}>{t("learnReviewStudySet")}</Link>
               <Button
                 onClick={handleOpenAddWords}
                 className="flex items-center gap-1.5"
@@ -337,6 +337,8 @@ export default function CollectionDetailPage() {
                 <Trash2 className="h-3.5 w-3.5 mr-1" />{t("learnDeleteDeck")}</Button>
             </div>
           </div>
+
+          <StudySetLearning collectionId={collectionId} wordCount={collection.wordCount} version={collection.updatedAt} />
 
           {/* Search bar within collection */}
           {vocabData && vocabData.content.length > 0 && (
@@ -396,10 +398,7 @@ export default function CollectionDetailPage() {
                             {item.difficultyLevel}
                           </span>
                         )}
-                        {item.srsStatus && (
-                          <span className="text-xs px-1.5 py-0.2 rounded bg-muted/60 text-muted-foreground">{t("learnSRS")}{" "}{item.srsStatus.state}
-                          </span>
-                        )}
+
                       </div>
 
                       <p className="text-sm text-foreground">

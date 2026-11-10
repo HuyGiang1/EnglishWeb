@@ -37,6 +37,8 @@ export interface ReviewSubmissionResponse {
 }
 
 export const reviewApi = {
+  getDueCount: (collectionId?: string): Promise<{ totalDue: number }> =>
+    apiClient.get("/api/v1/review/due-count", { params: { collectionId } }),
   getQueue: async (params?: { collectionId?: string; limit?: number }): Promise<ReviewQueueResponse> => {
     const query = new URLSearchParams();
     if (params?.collectionId !== undefined) {
