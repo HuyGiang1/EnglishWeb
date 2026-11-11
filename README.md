@@ -125,7 +125,7 @@ The repository maintains an exhaustive set of blueprints serving as the single s
 The following toolchains are verified in the local environment:
 
 * **Java**: OpenJDK 21 LTS
-* **Node.js**: Node.js 26.6.0 (or Node.js 24+)
+* **Node.js**: Node.js 26.6.0 (root `.nvmrc`; verification uses this exact version)
 * **Package Manager**: npm 11.18.0
 * **Database**: PostgreSQL 16 (Docker Compose)
 * **Build Tool**: Maven Wrapper (`./mvnw`)
@@ -134,6 +134,11 @@ The following toolchains are verified in the local environment:
 ---
 
 ## 7. Local Development Workflow
+
+For the isolated build/test/CI path (Node pin, Testcontainers requirements and
+report gates), see [Reproducible verification](docs/operations/VERIFICATION.md).
+Hosted GitHub Actions remains **UNVERIFIED** until an actual completed run; this
+workflow does not deploy or approve production audio.
 
 ```bash
 # 1. Start local PostgreSQL infrastructure (PostgreSQL 16 on :5432)

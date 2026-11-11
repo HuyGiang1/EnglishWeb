@@ -70,8 +70,8 @@ describe("M3-EVO-3B production Folder organization", () => {
       assert.ok(screen.getByRole("heading", { name: text(locale, "folderHeading") }));
       assert.ok(screen.getByRole("button", { name: /^Empty folder/ }));
       fireEvent.click(screen.getByRole("button", { name: text(locale, "folderUnfiled"), exact: true }));
-      await waitFor(() => assert.ok(screen.queryByText("Travel words") === null));
-      assert.ok(screen.getByText("Legacy words"));
+      assert.ok(await screen.findByText("Legacy words"));
+      assert.ok(screen.queryByText("Travel words") === null);
       assert.equal(requests.filter(r => r.path === "/api/v1/collections").at(-1).query.get("unfiled"), "true");
       assert.ok(!requests.some(r => r.method === "POST"));
     });

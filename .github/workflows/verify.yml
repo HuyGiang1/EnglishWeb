@@ -1,0 +1,76 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      BACKEND_INTERNAL_URL: http://127.0.0.1:1
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Frontend regression
+        run: npm test
+      - name: Typecheck without incremental cache
+        run: npm run typecheck -- --incremental false
+      - name: Lint
+        run: npm run lint
+      - name: Production build (unreachable backend, no credentials)
+        run: npm run build
+      - name: Check local build outputs
+        run: |
+          test -s .next/BUILD_ID
+          node -e 'const fs=require("node:fs"); for(const p of [".next/routes-manifest.json",".next/build-manifest.json"]) JSON.parse(fs.readFileSync(p,"utf8")); console.log("Next build manifests valid");'
+
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+          overwrite-settings: false
+      - name: Verify Java and Docker prerequisites
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.specification.version = //p')" = 21
+          docker info --format '{{.ServerVersion}}'
+      - name: Verify report audit failure gates
+        run: python3 -m unittest discover -s ../scripts/tests -p test_verify_backend_reports.py -v
+      - name: Isolated regression and JAR verification
+        id: verify
+        run: ./mvnw --batch-mode --no-transfer-progress -Dspring.datasource.url=jdbc:postgresql://127.0.0.1:1/englishflow_test_fallback_disabled -Dspring.jpa.show-sql=false clean verify
+      - name: Check reports and packaged media exclusions
+        if: always() && steps.verify.outcome != 'skipped'
+        run: python3 ../scripts/verify-backend-reports.py

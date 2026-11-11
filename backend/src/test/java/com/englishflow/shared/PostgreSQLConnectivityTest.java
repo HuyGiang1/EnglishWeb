@@ -11,6 +11,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -30,6 +31,9 @@ class PostgreSQLConnectivityTest {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private Flyway flyway;
+
     @Test
     @DisplayName("Verify live PostgreSQL connection and database identity")
     void testDatabaseConnectivity() throws Exception {
@@ -37,6 +41,14 @@ class PostgreSQLConnectivityTest {
 
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+
+            assertThat(connection.getMetaData().getURL()).isEqualTo(postgres.getJdbcUrl());
+            try (Connection migrationConnection = flyway.getConfiguration().getDataSource().getConnection()) {
+                assertThat(migrationConnection.getMetaData().getURL()).isEqualTo(postgres.getJdbcUrl());
+            }
+            assertThat(postgres.isRunning()).isTrue();
+            System.out.println("ISOLATION PASS: application and Flyway JDBC URLs match running PostgreSQL Testcontainer "
+                + postgres.getJdbcUrl());
 
             assertThat(connection.isValid(2)).isTrue();
 
